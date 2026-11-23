@@ -3,6 +3,9 @@
 [![CI](https://github.com/DirWangK/assembly-explorer/actions/workflows/ci.yml/badge.svg)](https://github.com/DirWangK/assembly-explorer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-20%2B-green.svg)](package.json)
+[![Live Demo](https://img.shields.io/badge/在线演示-assembly--explorer-blue.svg)](https://37li7xnb4ptdll7m7qw.traesite.cn)
+
+**在线体验**：https://37li7xnb4ptdll7m7qw.traesite.cn （Trae 部署，站点为私有可见，需以部署账号登录访问）
 
 浏览器里的多架构汇编实验室（灵感来自 [Compiler Explorer](https://godbolt.org/)）：
 
