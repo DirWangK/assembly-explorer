@@ -1,0 +1,28 @@
+Third-party engines bundled in vendor/
+======================================
+
+This site bundles WebAssembly builds of three reverse-engineering engines:
+
+1. Keystone.js  — port of the Keystone assembler framework
+   - npm: @alexaltea/keystone-js
+   - upstream: https://github.com/keystone-engine/keystone
+   - license: GPLv2 (see https://github.com/keystone-engine/keystone/blob/master/LICENSE)
+   - files: keystone.js, keystone.wasm
+
+2. Capstone.js  — port of the Capstone disassembler framework
+   - npm: @alexaltea/capstone-js
+   - upstream: https://github.com/capstone-engine/capstone
+   - license: BSD 3-Clause (see https://github.com/capstone-engine/capstone/blob/master/LICENSES.TXT)
+   - files: capstone.js, capstone.wasm
+
+3. Unicorn.js   — port of the Unicorn CPU emulator framework
+   - npm: @alexaltea/unicorn-js
+   - upstream: https://github.com/unicorn-engine/unicorn
+   - license: GPLv2 (see https://github.com/unicorn-engine/unicorn/blob/master/COPYING)
+   - files: unicorn_x86.js, unicorn_arm.js, unicorn_aarch64.js,
+            unicorn_mips.js, unicorn_ppc.js, unicorn_sparc.js
+     (each file embeds its architecture-specific WebAssembly module)
+
+All builds are powered by Emscripten (https://emscripten.org).
+Keystone and Unicorn are GPLv2-licensed; this page links to their sources
+above as required. Capstone is BSD-3-Clause.

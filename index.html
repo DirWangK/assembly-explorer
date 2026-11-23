@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assembly Explorer · 汇编实验室 — Keystone ⇄ Capstone ⇄ Unicorn</title>
+<meta name="description" content="浏览器里的多架构汇编实验室：Keystone 汇编、Capstone 反汇编、Unicorn 单步调试与模拟执行，全部通过 WebAssembly 运行。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='6' fill='%2313161c'/%3E%3Crect x='7' y='7' width='8' height='8' rx='1.5' fill='%23e5b567'/%3E%3Crect x='17' y='7' width='8' height='8' rx='1.5' fill='%236fc3df'/%3E%3Crect x='12' y='17' width='8' height='8' rx='1.5' fill='%23b294bb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+      <rect x="7" y="7" width="8" height="8" rx="1.5" class="lg-ks"></rect>
+      <rect x="17" y="7" width="8" height="8" rx="1.5" class="lg-cs"></rect>
+      <rect x="12" y="17" width="8" height="8" rx="1.5" class="lg-uc"></rect>
+    </svg>
+    <div class="brand-text">
+      <h1 data-i18n="app.title">Assembly Explorer</h1>
+      <span class="subtitle" data-i18n="app.subtitle"></span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <label class="ctl"><span data-i18n="ctl.arch"></span>
+      <select id="arch"></select>
+    </label>
+    <label class="ctl"><span data-i18n="ctl.syntax"></span>
+      <select id="syntax"></select>
+    </label>
+    <label class="ctl"><span data-i18n="ctl.base"></span>
+      <input id="base" value="0x10000" spellcheck="false">
+    </label>
+  </div>
+
+  <div class="controls right">
+    <div class="seg" id="theme-seg" role="group" data-i18n-title="ctl.theme" title="主题">
+      <button data-theme-opt="dark" data-i18n="theme.dark"></button>
+      <button data-theme-opt="light" data-i18n="theme.light"></button>
+      <button data-theme-opt="system" data-i18n="theme.system"></button>
+    </div>
+    <div class="seg" id="lang-seg" role="group">
+      <button data-lang-opt="zh" data-i18n="lang.zh"></button>
+      <button data-lang-opt="en" data-i18n="lang.en"></button>
+    </div>
+    <button id="share" class="btn" data-i18n="btn.share" data-i18n-title="btn.share"></button>
+    <div class="status" id="status"></div>
+  </div>
+</header>
+
+<main class="grid">
+
+  <!-- 第 1 栏：源码 + Keystone -->
+  <section class="pane">
+    <div class="pane-head">
+      <span class="tag ks" data-i18n="pane1.tag"></span>
+      <span class="pane-title" data-i18n="pane1.title"></span>
+      <button id="example" class="btn small" data-i18n="btn.loadExample"></button>
+    </div>
+    <div id="editor-wrap" class="editor-host"></div>
+    <div class="pane-foot" id="src-status"></div>
+  </section>
+
+  <!-- 第 2 栏：机器码 + Capstone -->
+  <section class="pane">
+    <div class="pane-head">
+      <span class="tag cs" data-i18n="pane2.tag"></span>
+      <span class="pane-title" data-i18n="pane2.title"></span>
+      <span class="meta" id="out-meta"></span>
+    </div>
+    <div class="pane-body">
+      <div class="subhead" data-i18n="pane2.hexdump"></div>
+      <div id="hexdump" class="mono-list"></div>
+      <div class="subhead"><span data-i18n="pane2.disasm"></span>
+        <span class="dim bp-hint" data-i18n="pane3.bpHint"></span>
+      </div>
+      <div id="disasm" class="mono-list"></div>
+      <div class="subhead" data-i18n="pane2.data"></div>
+      <div id="datadump" class="mono-list"></div>
+    </div>
+  </section>
+
+  <!-- 第 3 栏：Unicorn 调试器 -->
+  <section class="pane">
+    <div class="pane-head">
+      <span class="tag uc" data-i18n="pane3.tag"></span>
+      <span class="pane-title" data-i18n="pane3.title"></span>
+      <span class="meta" id="emu-meta"></span>
+    </div>
+    <div class="dbg-bar">
+      <button id="dbg-run" class="btn dbg primary" data-i18n-title="btn.run" title="运行">▶</button>
+      <button id="dbg-pause" class="btn dbg" data-i18n-title="btn.pause" title="暂停">⏸</button>
+      <button id="dbg-stepin" class="btn dbg" data-i18n-title="btn.stepIn" title="步入">⤵</button>
+      <button id="dbg-stepover" class="btn dbg" data-i18n-title="btn.stepOver" title="步过">⏭</button>
+      <button id="dbg-stop" class="btn dbg" data-i18n-title="btn.stop" title="停止">⏹</button>
+      <label class="ctl chk auto"><input type="checkbox" id="autoemu" checked><span data-i18n="btn.autoRun"></span></label>
+      <span class="dbg-state" id="dbg-state"></span>
+    </div>
+    <div class="pane-body">
+      <details class="env-details">
+        <summary data-i18n="pane3.env"></summary>
+        <div class="emu-config">
+          <div class="cfg-col">
+            <div class="cfg-label" data-i18n="pane3.envRegs"></div>
+            <textarea id="initregs" class="cfg-input" rows="3" spellcheck="false" data-i18n-ph="pane3.envRegs"></textarea>
+          </div>
+          <div class="cfg-col">
+            <div class="cfg-label" data-i18n="pane3.envMem"></div>
+            <textarea id="initmem" class="cfg-input" rows="3" spellcheck="false" data-i18n-ph="pane3.envMem"></textarea>
+          </div>
+          <label class="ctl wide"><span data-i18n="pane3.maxInsns"></span>
+            <input id="maxinsns" value="200000" spellcheck="false">
+          </label>
+          <div id="emu-warn" class="emu-warn"></div>
+        </div>
+      </details>
+
+      <div class="subhead"><span data-i18n="sec.regs"></span><span class="dim" data-i18n="sec.regsHint"></span></div>
+      <div id="regs" class="mono-list"></div>
+
+      <div class="subhead"><span data-i18n="sec.console"></span><span class="dim" data-i18n="sec.consoleHint"></span></div>
+      <div id="console" class="mono-list"></div>
+
+      <div class="subhead"><span data-i18n="sec.trace"></span><span class="dim" data-i18n="sec.traceHint"></span></div>
+      <div id="trace" class="mono-list"></div>
+
+      <div class="subhead" data-i18n="sec.memops"></div>
+      <div id="memops" class="mono-list"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <span data-i18n="foot.pipeline"></span>
+  <span class="dim" data-i18n="foot.tech"></span>
+</footer>
+
+<div id="toast"></div>
+
+<script src="vendor/capstone.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/arches.js"></script>
+<script src="js/session-payload.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
