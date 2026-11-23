@@ -68,17 +68,37 @@
     <div class="pane-head">
       <span class="tag cs" data-i18n="pane2.tag"></span>
       <span class="pane-title" data-i18n="pane2.title"></span>
+      <div class="seg small" id="mode-seg" role="group">
+        <button id="tab-disasm" class="on" data-i18n="tab.disasm"></button>
+        <button id="tab-hexin" data-i18n="tab.hexin"></button>
+      </div>
       <span class="meta" id="out-meta"></span>
     </div>
     <div class="pane-body">
-      <div class="subhead" data-i18n="pane2.hexdump"></div>
-      <div id="hexdump" class="mono-list"></div>
-      <div class="subhead"><span data-i18n="pane2.disasm"></span>
-        <span class="dim bp-hint" data-i18n="pane3.bpHint"></span>
+      <div id="disasm-view">
+        <div class="subhead" data-i18n="pane2.hexdump"></div>
+        <div id="hexdump" class="mono-list"></div>
+        <div class="subhead"><span data-i18n="pane2.disasm"></span>
+          <span class="dim bp-hint" data-i18n="pane3.bpHint"></span>
+        </div>
+        <div id="disasm" class="mono-list"></div>
+        <div class="subhead" data-i18n="pane2.data"></div>
+        <div id="datadump" class="mono-list"></div>
       </div>
-      <div id="disasm" class="mono-list"></div>
-      <div class="subhead" data-i18n="pane2.data"></div>
-      <div id="datadump" class="mono-list"></div>
+      <div id="hexin-view" class="hidden">
+        <div class="hexin-toolbar">
+          <button id="hexin-toasm" class="btn small primary" data-i18n="btn.toAsm"></button>
+          <button id="hexin-gen" class="btn small" data-i18n="btn.gen"></button>
+          <button id="hexin-import" class="btn small" data-i18n="btn.import"></button>
+          <input type="file" id="hexin-file" class="hidden" accept=".bin,.hex,.txt,.s,.asm,.dump,.out">
+        </div>
+        <textarea id="hexin" class="cfg-input hexin-input" rows="14" spellcheck="false" data-i18n-ph="hexin.placeholder"></textarea>
+        <div class="subhead"><span data-i18n="pane2.disasm"></span>
+          <span class="dim bp-hint" data-i18n="pane3.bpHint"></span>
+        </div>
+        <div id="disasm-hex" class="mono-list"></div>
+        <div id="hexin-status" class="pane-foot"></div>
+      </div>
     </div>
   </section>
 
@@ -143,6 +163,7 @@
 <script src="vendor/capstone.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/arches.js"></script>
+<script src="js/hexio.js"></script>
 <script src="js/session-payload.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/main.js"></script>

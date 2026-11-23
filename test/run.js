@@ -5,6 +5,7 @@ const path = require('path');
 const suites = [
   './preproc.test.js',
   './arches.test.js',
+  './hexio.test.js',
   './i18n.test.js',
   './assembler.test.js',
   './emu-core.test.js',

@@ -33,6 +33,7 @@ const ARCHES = {
      * 空数组 = 不设置语法选项（默认 Intel + 十进制基数，行为最直观）。 */
     syntaxes: { intel: [], att: ['OPT_SYNTAX_ATT'] },
     callLike: ['call', 'callq'],
+    branchLike: ['jmp', 'je', 'jne', 'jz', 'jnz', 'ja', 'jae', 'jb', 'jbe', 'jg', 'jge', 'jl', 'jle', 'js', 'jns', 'jo', 'jno', 'jp', 'jnp', 'jc', 'jnc', 'loop', 'loope', 'loopne', 'jecxz', 'jrcxz'],
     syscall: 'x86_64',
     example: [
       '; Linux x86-64 ABI：write(1, msg, 13) 后 exit(0)',
@@ -73,6 +74,7 @@ const ARCHES = {
     comments: [';', '/*', '*/', '//'],
     syntaxes: { intel: [], att: ['OPT_SYNTAX_ATT'] },
     callLike: ['call', 'callq'],
+    branchLike: ['jmp', 'je', 'jne', 'jz', 'jnz', 'ja', 'jae', 'jb', 'jbe', 'jg', 'jge', 'jl', 'jle', 'js', 'jns', 'jo', 'jno', 'jp', 'jnp', 'jc', 'jnc', 'loop', 'loope', 'loopne', 'jecxz', 'jcxz'],
     syscall: 'x86_32',
     example: [
       '; Linux i386 ABI：int 0x80',
@@ -111,6 +113,7 @@ const ARCHES = {
     comments: [';', '/*', '*/', '//'],
     syntaxes: { intel: [], att: ['OPT_SYNTAX_ATT'] },
     callLike: ['call', 'callq'],
+    branchLike: ['jmp', 'je', 'jne', 'jz', 'jnz', 'ja', 'jae', 'jb', 'jbe', 'jg', 'jge', 'jl', 'jle', 'js', 'jns', 'jo', 'jno', 'jp', 'jnp', 'jc', 'jnc', 'loop', 'loope', 'loopne', 'jcxz'],
     syscall: null,
     example: [
       '; 实模式：内存读写往返（写入后读回，不依赖预填数据）',
@@ -143,6 +146,7 @@ const ARCHES = {
     thumb: false,
     comments: [';', '@', '/*', '*/', '//'],
     callLike: ['bl', 'blx'],
+    branchLike: ['b', 'bl', 'bx', 'blx', 'beq', 'bne', 'bcs', 'bhs', 'bcc', 'blo', 'bmi', 'bpl', 'bvs', 'bvc', 'bhi', 'bls', 'bge', 'blt', 'bgt', 'ble', 'bal'],
     syscall: 'arm',
     example: [
       '@ ARM A32：10+9+…+1 = 55，写入数据段后读回验证',
@@ -178,6 +182,7 @@ const ARCHES = {
     thumb: true,
     comments: [';', '@', '/*', '*/', '//'],
     callLike: ['bl', 'blx'],
+    branchLike: ['b', 'bl', 'bx', 'blx', 'beq', 'bne', 'bcs', 'bhs', 'bcc', 'blo', 'bmi', 'bpl', 'bvs', 'bvc', 'bhi', 'bls', 'bge', 'blt', 'bgt', 'ble', 'bal'],
     syscall: 'arm',
     example: [
       '        movs    r0, #6',
@@ -201,6 +206,7 @@ const ARCHES = {
     spReg: ['SP', 'ARM64_REG_SP'], spAliases: ['sp'], pcAliases: ['pc'],
     comments: [';', '@', '/*', '*/', '//'],
     callLike: ['bl'],
+    branchLike: ['b', 'bl', 'b.eq', 'b.ne', 'b.cs', 'b.hs', 'b.cc', 'b.lo', 'b.mi', 'b.pl', 'b.vs', 'b.vc', 'b.hi', 'b.ls', 'b.ge', 'b.lt', 'b.gt', 'b.le', 'b.al', 'cbz', 'cbnz', 'tbz', 'tbnz'],
     syscall: 'arm64',
     example: [
       '; AArch64：乘法结果写入数据段后读回验证',
@@ -232,6 +238,7 @@ const ARCHES = {
     spReg: ['SP', 'MIPS_REG_SP'], spAliases: ['sp', '$sp'], pcAliases: ['pc'],
     comments: ['#', ';', '/*', '*/', '//'],
     callLike: ['jal', 'jalr', 'bal', 'bl', 'jirl'],
+    branchLike: ['b', 'beq', 'bne', 'blez', 'bgtz', 'bltz', 'bgez', 'bltzal', 'bgezal', 'j', 'jal', 'beqzl', 'bnel'],
     syscall: 'mips',
     example: [
       '# MIPS32 o32 ABI：write(1, msg, 13) 后 exit(0)',
@@ -261,6 +268,7 @@ const ARCHES = {
     spReg: ['SP', 'MIPS_REG_SP'], spAliases: ['sp', '$sp'], pcAliases: ['pc'],
     comments: ['#', ';', '/*', '*/', '//'],
     callLike: ['jal', 'jalr', 'bal', 'bl', 'jirl'],
+    branchLike: ['b', 'beq', 'bne', 'blez', 'bgtz', 'bltz', 'bgez', 'bltzal', 'bgezal', 'j', 'jal', 'beqzl', 'bnel'],
     syscall: 'mips',
     example: [
       '# MIPS32 大端：write(1, msg, 13) 后 exit(0)',
@@ -294,6 +302,7 @@ const ARCHES = {
     spReg: ['SP', 'MIPS_REG_SP'], spAliases: ['sp', '$sp'], pcAliases: ['pc'],
     comments: ['#', ';', '/*', '*/', '//'],
     callLike: ['jal', 'jalr', 'bal', 'bl', 'jirl'],
+    branchLike: ['b', 'beq', 'bne', 'blez', 'bgtz', 'bltz', 'bgez', 'j', 'jal'],
     syscall: 'mips',
     example: [
       '# MIPS64：64 位运算',
@@ -326,6 +335,7 @@ const ARCHES = {
     spReg: ['R1', 'PPC_REG_1'], spAliases: ['r1'], pcAliases: ['pc'],
     comments: ['#', ';', '/*', '*/', '//'],
     callLike: ['bl'],
+    branchLike: ['b', 'bl', 'ba', 'blt', 'ble', 'bgt', 'bge', 'beq', 'bne', 'bdz', 'bclr', 'bctr'],
     syscall: null,
     example: [
       'li      3, 5',
@@ -350,6 +360,7 @@ const ARCHES = {
     spReg: ['SP', 'SPARC_REG_SP'], spAliases: ['sp', '%sp', 'o6'], pcAliases: ['pc'],
     comments: ['!', ';', '/*', '*/', '//'],
     callLike: ['call'],
+    branchLike: ['ba', 'be', 'bne', 'bl', 'ble', 'bleu', 'bgu', 'bg', 'bge', 'blu', 'bneg', 'bpos', 'bvs', 'bvc', 'bcs', 'bcc'],
     syscall: null,
     example: [
       '! SPARC V8 大端：算术运算与标志位',

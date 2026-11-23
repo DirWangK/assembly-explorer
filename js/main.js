@@ -16,7 +16,9 @@ const state = {
   maxCount: 200000,
   autoEmu: true,
   theme: 'dark',
-  last: null,           // 最近一次 assembleSource 结果
+  hexMode: false,       // true = 由机器码输入驱动流水线
+  hexDirty: false,      // 用户手动编辑过机器码输入（切 Tab 时不覆盖）
+  last: null,           // 最近一次汇编结果（源码或机器码驱动）
   enginePills: { ks: false, cs: false, uc: false },
   loadedExample: null,
 };
@@ -226,6 +228,7 @@ function applyLang(lang) {
 
 let assembleSeq = 0;
 async function assemble() {
+  if (state.hexMode) { assembleFromHex(); return; }
   const a = arch();
   const seq = ++assembleSeq;
   const r = await ksHost.call({
@@ -257,6 +260,153 @@ async function assemble() {
   scheduleDebug();
 }
 
+/* ---------------- 流水线阶段 1b：机器码输入驱动（Capstone 反汇编） ---------------- */
+
+function concatImage(image) {
+  let total = 0;
+  for (const s of image) total += s.bytes.length;
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const s of image) { out.set(s.bytes, off); off += s.bytes.length; }
+  return out;
+}
+
+const assembleFromHex = debounce(function () {
+  if (!state.hexMode) return;
+  const a = arch();
+  const base = a.layout.single ? 0 : state.base;
+  const parsed = HexIO.parseHexInput($('hexin').value);
+  const bytes = parsed.bytes;
+  const cs = getCs();
+  const insns = bytes.length ? cs.disasm(bytes, base) : [];
+  const pseudo = {
+    ok: bytes.length > 0 && parsed.errors.length === 0,
+    errors: parsed.errors.map(e => ({ line: e.line, message: e.message })),
+    segments: bytes.length ? [{ kind: 'code', addr: base, bytes, parts: [], labels: [] }] : [],
+    image: bytes.length ? [{ addr: base, bytes, kind: 'code' }] : [],
+    codeSegments: bytes.length ? [{ addr: base, bytes, parts: [], labels: [] }] : [],
+    dataSegments: [],
+    symbols: {},
+    equ: {},
+    startAddr: base,
+    untilAddr: Math.max(base + bytes.length, base + 1),
+    lineInfo: [],
+    deferredAny: false,
+    totalInsns: insns.length,
+    totalBytes: bytes.length,
+    cleaned: '',
+  };
+  state.last = pseudo;
+
+  if (parsed.errors.length || !bytes.length) {
+    /* 无效输入：清空旧解码并复位调试器，避免误导 */
+    state.last = null;
+    if (parsed.errors.length) {
+      $('hexin-status').innerHTML = '<span class="err-pill">✘ ' +
+        escHtml(parsed.errors.map(e => '第 ' + (e.line + 1) + ' 行：' + e.message).join(' / ')) + '</span>';
+    } else {
+      $('hexin-status').innerHTML = '<span class="hint">' + I('waitValid') + '</span>';
+    }
+    $('src-status').innerHTML = '<span class="hint">' + I('hexin.modeNote') + '</span>';
+    editor.setLineStates([]);
+    endSession(true);
+    renderOutput();
+    return;
+  }
+  if (bytes.length) {
+    $('hexin-status').innerHTML = '<span class="ok-pill">✔ ' + I('hexin.statusOk', { n: bytes.length, m: insns.length }) + '</span>';
+  }
+  $('src-status').innerHTML = '<span class="hint">' + I('hexin.modeNote') + '</span>';
+  editor.setLineStates([]);
+
+  renderOutput();
+  scheduleDebug();
+}, 300);
+
+/* 机器码 → 汇编源码（Capstone 反汇编 + 分支标签生成），填入编辑器并切回源码模式 */
+function hexinToAsm() {
+  const res = state.last;
+  if (!res || !res.ok || !res.codeSegments.length) { toast(I('hexin.needBytes')); return; }
+  const cs = getCs();
+  const seg = res.codeSegments[0];
+  const insns = cs.disasm(seg.bytes, seg.addr).map(i => ({
+    address: Number(i.address), size: Number(i.size), mnemonic: i.mnemonic, op_str: i.op_str,
+  }));
+  const gen = HexIO.disasmToSource(insns, arch());
+  editor.value = gen.source;
+  state.hexDirty = false;
+  setHexMode(false); // 切回源码模式并自动汇编
+  toast(I('hexin.toAsmDone', { n: insns.length }));
+}
+
+/* 汇编产物 → 机器码文本（显式重新同步） */
+function hexinGenFromAsm() {
+  const res = state.last;
+  if (!res || !res.ok || !res.image.some(s => s.bytes.length)) { toast(I('waitValid')); return; }
+  $('hexin').value = HexIO.formatHexDump(concatImage(res.image), 16);
+  state.hexDirty = false;
+  assembleFromHex();
+}
+
+/* 文件导入：.s/.asm/.txt → 汇编源码；其余（.bin/.hex/.dump 等）→ 机器码 */
+function hexinImportFile(file) {
+  if (!file) return;
+  const isSource = /\.(s|asm|S|ASM|txt)$/i.test(file.name);
+  if (isSource) {
+    const fr = new FileReader();
+    fr.onload = () => {
+      editor.value = String(fr.result);
+      state.hexDirty = false;
+      setHexMode(false);
+      toast(I('hexin.importDone', { n: file.name }));
+    };
+    fr.readAsText(file);
+  } else {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const u8 = new Uint8Array(fr.result);
+      state.hexMode = true;
+      syncModeSeg();
+      $('hexin').value = HexIO.formatHexDump(u8, 16);
+      state.hexDirty = false;
+      toggleViews();
+      assembleFromHex();
+      toast(I('hexin.importDone', { n: file.name }));
+    };
+    fr.readAsArrayBuffer(file);
+  }
+}
+
+/* ---------------- 模式切换（源码 ⇄ 机器码） ---------------- */
+
+function syncModeSeg() {
+  $('tab-disasm').classList.toggle('on', !state.hexMode);
+  $('tab-hexin').classList.toggle('on', state.hexMode);
+}
+
+function toggleViews() {
+  $('disasm-view').classList.toggle('hidden', state.hexMode);
+  $('hexin-view').classList.toggle('hidden', !state.hexMode);
+}
+
+function setHexMode(on) {
+  state.hexMode = on;
+  syncModeSeg();
+  toggleViews();
+  if (on) {
+    /* 自动同步：从汇编产物生成机器码文本（用户已有手改内容则不覆盖） */
+    if (!state.hexDirty) {
+      const res = state.last;
+      if (res && res.ok && res.image.some(s => s.bytes.length)) {
+        $('hexin').value = HexIO.formatHexDump(concatImage(res.image), 16);
+      }
+    }
+    assembleFromHex();
+  } else {
+    assemble(); // 回到源码驱动
+  }
+}
+
 /* ---------------- 流水线阶段 2：Capstone 反汇编回环 ---------------- */
 
 function renderOutput() {
@@ -265,6 +415,7 @@ function renderOutput() {
   if (!res || !res.ok) {
     hexEl.innerHTML = '<div class="empty">' + I('waitValid') + '</div>';
     disEl.innerHTML = '<div class="empty">—</div>';
+    $('disasm-hex').innerHTML = '<div class="empty">—</div>';
     dataEl.innerHTML = '<div class="empty">—</div>';
     metaEl.textContent = '';
     return;
@@ -337,6 +488,7 @@ function renderOutput() {
     }
   });
   disEl.innerHTML = disRows.join('') || '<div class="empty">—</div>';
+  $('disasm-hex').innerHTML = disEl.innerHTML; // 机器码输入模式下共用同一份反汇编
   metaEl.textContent = res.totalInsns + ' insn · ' + res.totalBytes + ' B' +
     (res.deferredAny ? I('status.lineMapUnavailable') : '');
 
@@ -562,16 +714,23 @@ function setDbgStateChip(mode) {
   renderDbgState();
 }
 
+function toggleBreakpoint(addr, row) {
+  if (dbg.breakpoints.has(addr)) dbg.breakpoints.delete(addr);
+  else dbg.breakpoints.add(addr);
+  row.classList.toggle('has-bp', dbg.breakpoints.has(addr));
+}
+
 function markPc() {
+  const sel = '#disasm .insrow.at-pc, #disasm-hex .insrow.at-pc';
   if (dbg.state === 'idle') {
-    document.querySelectorAll('#disasm .insrow.at-pc').forEach(el => el.classList.remove('at-pc'));
+    document.querySelectorAll(sel).forEach(el => el.classList.remove('at-pc'));
     return;
   }
   const a = arch();
   const pcShown = (dbg.pc & (a.thumb ? ~1 : 0xFFFFFFFF)) >>> 0;
-  document.querySelectorAll('#disasm .insrow.at-pc').forEach(el => el.classList.remove('at-pc'));
-  const row = document.querySelector('#disasm .insrow[data-addr="' + pcShown + '"]');
-  if (row) row.classList.add('at-pc');
+  document.querySelectorAll(sel).forEach(el => el.classList.remove('at-pc'));
+  document.querySelectorAll('#disasm .insrow[data-addr="' + pcShown + '"], #disasm-hex .insrow[data-addr="' + pcShown + '"]')
+    .forEach(el => el.classList.add('at-pc'));
 }
 
 function endSession(clear) {
@@ -728,9 +887,22 @@ function wireEvents() {
   $('example').addEventListener('click', () => {
     editor.value = arch().example;
     state.loadedExample = state.archId;
-    assemble();
+    if (state.hexMode) setHexMode(false); // 示例是汇编源码，回到源码模式
+    else assemble();
   });
   $('share').addEventListener('click', shareLink);
+
+  // 模式切换（源码 ⇄ 机器码）与机器码输入
+  $('tab-disasm').addEventListener('click', () => { if (state.hexMode) setHexMode(false); });
+  $('tab-hexin').addEventListener('click', () => { if (!state.hexMode) setHexMode(true); });
+  $('hexin-toasm').addEventListener('click', hexinToAsm);
+  $('hexin-gen').addEventListener('click', hexinGenFromAsm);
+  $('hexin-import').addEventListener('click', () => $('hexin-file').click());
+  $('hexin-file').addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) hexinImportFile(e.target.files[0]);
+    e.target.value = '';
+  });
+  $('hexin').addEventListener('input', () => { state.hexDirty = true; assembleFromHex(); });
 
   // 调试工具栏
   $('dbg-run').addEventListener('click', dbgRun);
@@ -741,17 +913,16 @@ function wireEvents() {
   $('dbg-stepover').addEventListener('click', dbgStepOver);
   $('dbg-stop').addEventListener('click', dbgStop);
 
-  // 断点：点击反汇编行切换
+  // 断点：点击反汇编行切换（反汇编视图与机器码模式共用）
   $('disasm').addEventListener('click', (e) => {
     const row = e.target.closest('.insrow[data-addr]');
     if (!row) return;
-    const addr = Number(row.dataset.addr);
-    if (dbg.breakpoints.has(addr)) dbg.breakpoints.delete(addr);
-    else dbg.breakpoints.add(addr);
-    row.classList.toggle('has-bp', dbg.breakpoints.has(addr));
-    if (dbg.state === 'paused' || dbg.state === 'ready') {
-      // 运行前让 worker 同步断点集合：直接重发（resume 时带列表即可）
-    }
+    toggleBreakpoint(Number(row.dataset.addr), row);
+  });
+  $('disasm-hex').addEventListener('click', (e) => {
+    const row = e.target.closest('.insrow[data-addr]');
+    if (!row) return;
+    toggleBreakpoint(Number(row.dataset.addr), row);
   });
 
   // 主题 / 语言

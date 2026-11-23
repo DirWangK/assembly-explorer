@@ -33,6 +33,7 @@ No build step — the repository *is* the site, deployable to any static host.
 ## Features
 
 - **Three-engine pipeline**: Keystone assembles → Capstone round-trip disassembles → Unicorn emulates
+- **Bidirectional conversion**: assembly ⇄ machine code drive the pipeline both ways — in machine-code mode paste/import hex (objdump/xxd dump formats supported), get live disassembly and debug it directly; one click "Convert to assembly" returns to the editor (branch targets become labels automatically, keeping round-trip encodings consistent)
 - **Real debugger**: run / pause / step in / step over (call-aware) / breakpoints (click a disassembly row) / execution trace / memory-access log / syscall console
 - **Assembly syntax**:
   - Labels (forward/backward references within a segment, resolved relatively by Keystone)
