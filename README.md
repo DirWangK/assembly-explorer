@@ -1,5 +1,6 @@
 # Assembly Explorer · 汇编实验室
 
+[![CI](https://github.com/DirWangK/assembly-explorer/actions/workflows/ci.yml/badge.svg)](https://github.com/DirWangK/assembly-explorer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-20%2B-green.svg)](package.json)
 
@@ -46,17 +47,6 @@ npm start          # 本地静态服务（端口 8899），浏览器打开 http:
 - Unicorn 的 PPC64 构建初始化即抛 `UC_ERR_EXCEPTION` → 提供 PPC32；MIPS64 下 `sd/ld/dsrl` 等指令异常处理有问题 → 示例仅使用已验证指令
 - Keystone 显式 `OPT_SYNTAX_INTEL/NASM` 会把裸数字按十六进制解析 → 默认不设语法选项（十进制基数），仅 AT&T 设置选项
 
-## 启用 CI（可选）
-
-本仓库自带 GitHub Actions 工作流（`.github/workflows/ci.yml`，运行语法检查与全量测试）。
-当前 token 未含 `workflow` scope，工作流文件保留在本地未推送。需要启用时：
-
-```bash
-gh auth refresh -h github.com -s workflow   # 补充 workflow 权限
-git add .github && git commit -m "ci: enable GitHub Actions" && git push
-```
-
-
 ## 开发
 
 ```bash
@@ -64,6 +54,8 @@ npm install       # 安装测试依赖（三个引擎的 npm 构建）
 npm test          # node test/run.js —— 72 个测试：预处理/汇编/调试核心/架构表/i18n
 npm start         # 本地静态服务（端口 8899）
 ```
+
+CI：每次 push/PR 会自动运行语法检查与全量测试（GitHub Actions，Node 20/22 矩阵），状态见顶部徽章。
 
 目录结构：
 
