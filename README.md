@@ -1,5 +1,7 @@
 # Assembly Explorer · 汇编实验室
 
+**语言 / Language**: [中文](README.md) | [English](README.en.md)
+
 [![CI](https://github.com/DirWangK/assembly-explorer/actions/workflows/ci.yml/badge.svg)](https://github.com/DirWangK/assembly-explorer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-20%2B-green.svg)](package.json)
