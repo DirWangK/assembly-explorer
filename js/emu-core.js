@@ -89,6 +89,11 @@
       else emu.reg_write_i32(uc[cnst], Number(BigInt(val) & 0xFFFFFFFFn));
     }
 
+    /* ---------- 初始 PC ---------- */
+    /* 引擎初始 PC 为 0，与"停在代码起点"的语义不一致（寄存器面板/断点会看到 0）。
+     * 这里显式写入 startAddr；emu_start 仍以传入地址为准。 */
+    try { regWrite(payload.pcReg[1], payload.startAddr); } catch (e) { /* 个别构建只读 PC */ }
+
     /* ---------- 工具 ---------- */
     function regRead(cnst) {
       const w = (payload.regWidths && payload.regWidths[cnst]) || 8;

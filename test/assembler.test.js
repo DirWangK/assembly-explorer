@@ -33,6 +33,20 @@ test('x86-64 完整示例：伪指令数据 + 符号替换 + 段切分', async (
   assert(codeHex.includes('48c7c20d000000'), 'mov rdx, 13 (decimal!)');
 });
 
+test('指令计数与实际编码行一致（纯标签行不计）', async () => {
+  const lib = await ks();
+  const a = ARCHES.x86_64;
+  const res = Assembler.assembleSource({
+    ksLib: lib, arch: a, syntax: 'intel',
+    source: '_start:\nentry:\nmov eax, 1\nret\n.org 0x200000\nmsg: .ascii "hi"',
+    base: 0x10000,
+  });
+  assert(res.ok, 'assemble ok: ' + JSON.stringify(res.errors));
+  assertEq(res.totalInsns, 2, '2 real instructions (labels excluded), got ' + res.totalInsns);
+  const withBytes = res.lineInfo.filter(l => l.bytes && l.bytes.length).length;
+  assertEq(withBytes, res.totalInsns, 'totalInsns == lines that produced bytes');
+});
+
 test('跨段符号替换正确编码（mov rsi, MSG ≡ mov rsi, 0x200000）', async () => {
   const lib = await ks();
   const a = ARCHES.x86_64;

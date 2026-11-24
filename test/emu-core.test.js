@@ -93,6 +93,15 @@ for (const g of GOLDEN) {
 
 /* ---------- 调试器行为 ---------- */
 
+test('会话初始化：PC 寄存器指向代码起点（停止态寄存器显示一致）', async () => {
+  const { session, res } = await makeSession('x86_64');
+  const meta = session.snapshotMeta();
+  assertEq(meta.state, 'paused', 'init paused');
+  assertEq(meta.pc, res.startAddr, 'meta.pc = startAddr');
+  assertEq(BigInt(meta.regs.RIP), BigInt(res.startAddr), 'RIP register = startAddr');
+  session.end();
+});
+
 test('步入：单步推进 PC 与轨迹计数', async () => {
   const { session, res } = await makeSession('x86_64');
   const startPc = session.pc;

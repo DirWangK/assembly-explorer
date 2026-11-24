@@ -52,53 +52,52 @@
 
 <main class="grid">
 
-  <!-- 第 1 栏：源码 + Keystone -->
+  <!-- 第 1 栏：输入（源码 / 机器码）+ Keystone -->
   <section class="pane">
     <div class="pane-head">
       <span class="tag ks" data-i18n="pane1.tag"></span>
       <span class="pane-title" data-i18n="pane1.title"></span>
+      <div class="seg small" id="input-seg" role="group">
+        <button id="tab-src" class="on" data-i18n="tab.source" data-i18n-title="tab.sourceHint"></button>
+        <button id="tab-hex" data-i18n="tab.hex" data-i18n-title="tab.hexHint"></button>
+      </div>
       <button id="example" class="btn small" data-i18n="btn.loadExample"></button>
     </div>
-    <div id="editor-wrap" class="editor-host"></div>
-    <div class="pane-foot" id="src-status"></div>
+
+    <div id="src-view" class="input-view">
+      <div id="editor-wrap" class="editor-host"></div>
+      <div class="pane-foot" id="src-status"></div>
+    </div>
+
+    <div id="hex-view" class="pane-body hidden">
+      <div class="hexin-toolbar">
+        <button id="hexin-toasm" class="btn small primary" data-i18n="btn.toAsm"></button>
+        <button id="hexin-gen" class="btn small" data-i18n="btn.gen"></button>
+        <button id="hexin-import" class="btn small" data-i18n="btn.import"></button>
+        <input type="file" id="hexin-file" class="hidden" accept=".bin,.hex,.txt,.s,.asm,.dump,.out">
+      </div>
+      <textarea id="hexin" class="cfg-input hexin-input" rows="16" spellcheck="false" data-i18n-ph="hexin.placeholder"></textarea>
+      <div class="hexin-help" data-i18n="hexin.help"></div>
+      <div id="hexin-status" class="hexin-status"></div>
+    </div>
   </section>
 
-  <!-- 第 2 栏：机器码 + Capstone -->
+  <!-- 第 2 栏：机器码 + Capstone（纯输出） -->
   <section class="pane">
     <div class="pane-head">
       <span class="tag cs" data-i18n="pane2.tag"></span>
       <span class="pane-title" data-i18n="pane2.title"></span>
-      <div class="seg small" id="mode-seg" role="group">
-        <button id="tab-disasm" class="on" data-i18n="tab.disasm"></button>
-        <button id="tab-hexin" data-i18n="tab.hexin"></button>
-      </div>
       <span class="meta" id="out-meta"></span>
     </div>
     <div class="pane-body">
-      <div id="disasm-view">
-        <div class="subhead" data-i18n="pane2.hexdump"></div>
-        <div id="hexdump" class="mono-list"></div>
-        <div class="subhead"><span data-i18n="pane2.disasm"></span>
-          <span class="dim bp-hint" data-i18n="pane3.bpHint"></span>
-        </div>
-        <div id="disasm" class="mono-list"></div>
-        <div class="subhead" data-i18n="pane2.data"></div>
-        <div id="datadump" class="mono-list"></div>
+      <div class="subhead" data-i18n="pane2.hexdump"></div>
+      <div id="hexdump" class="mono-list"></div>
+      <div class="subhead"><span data-i18n="pane2.disasm"></span>
+        <span class="dim bp-hint" data-i18n="pane3.bpHint"></span>
       </div>
-      <div id="hexin-view" class="hidden">
-        <div class="hexin-toolbar">
-          <button id="hexin-toasm" class="btn small primary" data-i18n="btn.toAsm"></button>
-          <button id="hexin-gen" class="btn small" data-i18n="btn.gen"></button>
-          <button id="hexin-import" class="btn small" data-i18n="btn.import"></button>
-          <input type="file" id="hexin-file" class="hidden" accept=".bin,.hex,.txt,.s,.asm,.dump,.out">
-        </div>
-        <textarea id="hexin" class="cfg-input hexin-input" rows="14" spellcheck="false" data-i18n-ph="hexin.placeholder"></textarea>
-        <div class="subhead"><span data-i18n="pane2.disasm"></span>
-          <span class="dim bp-hint" data-i18n="pane3.bpHint"></span>
-        </div>
-        <div id="disasm-hex" class="mono-list"></div>
-        <div id="hexin-status" class="pane-foot"></div>
-      </div>
+      <div id="disasm" class="mono-list"></div>
+      <div class="subhead" data-i18n="pane2.data"></div>
+      <div id="datadump" class="mono-list"></div>
     </div>
   </section>
 
@@ -153,6 +152,28 @@
 
 </main>
 
+<!-- 底部日志面板：分级过滤 / 跟随滚动 / 折叠 -->
+<section class="logbar" id="logbar">
+  <div class="logbar-head">
+    <button class="btn small ghost" id="log-toggle" aria-expanded="true" aria-controls="logbody">
+      <span class="log-ico">▾</span><span data-i18n="log.title"></span>
+    </button>
+    <span class="log-count" id="log-count"></span>
+    <label class="ctl chk"><input type="checkbox" id="log-follow" checked><span data-i18n="log.follow"></span></label>
+    <span class="log-spacer"></span>
+    <label class="ctl"><span data-i18n="log.level"></span>
+      <select id="log-level">
+        <option value="debug">debug</option>
+        <option value="info" selected>info</option>
+        <option value="warn">warn</option>
+        <option value="error">error</option>
+      </select>
+    </label>
+    <button class="btn small" id="log-clear" data-i18n="log.clear"></button>
+  </div>
+  <div class="logbody" id="logbody"></div>
+</section>
+
 <footer class="foot">
   <span data-i18n="foot.pipeline"></span>
   <span class="dim" data-i18n="foot.tech"></span>
@@ -164,6 +185,7 @@
 <script src="js/i18n.js"></script>
 <script src="js/arches.js"></script>
 <script src="js/hexio.js"></script>
+<script src="js/applog.js"></script>
 <script src="js/session-payload.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/main.js"></script>

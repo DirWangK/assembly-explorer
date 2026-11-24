@@ -12,7 +12,8 @@
 浏览器里的多架构汇编实验室（灵感来自 [Compiler Explorer](https://godbolt.org/)）：
 
 ```
-汇编源码 ──① Keystone──▶ 机器码 ──② Capstone──▶ 反汇编回环验证
+汇编源码 ⇄ 机器码（同一输入面板，双向实时同步）
+      └─① Keystone─▶ 机器码 ──② Capstone──▶ 反汇编回环验证
                               └──────▶ ③ Unicorn 调试器（步入/步过/断点/暂停）
 ```
 
@@ -24,7 +25,7 @@
 git clone https://github.com/DirWangK/assembly-explorer.git
 cd assembly-explorer
 npm install        # 安装测试依赖（三个引擎的 npm 构建）
-npm test           # 72 项测试：预处理/汇编/调试核心/架构表/i18n
+npm test           # 100 项测试：预处理/汇编/调试核心/机器码⇄源码/架构表/i18n
 npm start          # 本地静态服务（端口 8899），浏览器打开 http://127.0.0.1:8899
 ```
 
@@ -34,7 +35,12 @@ npm start          # 本地静态服务（端口 8899），浏览器打开 http:
 ## 功能
 
 - **三引擎流水线**：Keystone 汇编 → Capstone 回环反汇编 → Unicorn 模拟执行
-- **双向转换**：汇编 ⇄ 机器码互相驱动 —— 机器码输入模式下粘贴/导入 hex（支持 objdump/xxd 转储格式），实时反汇编、可直接单步调试；一键"转为汇编源码"回到编辑器（分支目标自动转为标签，保证往返编码一致）
+- **单一输入面 + 双向同步**：第 1 栏（Keystone）内分「源码 / 机器码」两页，互为镜像 ——
+  - 源码页是权威输入时，机器码页自动镜像 Keystone 的编码产物（含 `@data` 分区标记）；
+  - 在机器码页粘贴/导入 hex（支持纯 hex、objdump、xxd 转储），实时反汇编且源码页同步生成可再汇编的源码（分支目标自动转 `L_<addr>` 标签），编码往返一致；
+  - 切回源码页会重新汇编并**在日志中审计字节差异**（如引擎自动补延迟槽）。
+- **代码 / 数据分区**：`@code 0x10000` / `@data 0x200000`（或 `.org`）标记区域；数据区只做 hex/ASCII 展示与 `.byte`/`.ascii` 回写，**绝不被误解码成垃圾指令**；纯数据程序也能正常汇编、展示与分享（调试器会明确提示"无可执行指令"）
+- **底部日志面板**：分级（debug/info/warn/error）、模块标签（KS/CS/UC/UI）、时间戳、跟随滚动、级别过滤、清空、折叠；汇编耗时/错误行、引擎就绪与重建、断点、会话结束原因、机器码解析错误、导入与转换动作都会记录（也同步到 devtools 控制台）
 - **真实调试器**：运行 / 暂停 / 步入 / 步过（自动识别 call 类指令）/ 断点（点击反汇编行）/ 执行轨迹 / 内存访问日志 / syscall 控制台
 - **汇编语法支持**：
   - 标签（段内前向/后向引用，由 Keystone 相对解析）
@@ -44,7 +50,7 @@ npm start          # 本地静态服务（端口 8899），浏览器打开 http:
   - 按架构注释：`;` `//` `#` `@` `!`
 - **11 种架构**：x86-64 / x86-32 / x86-16(实模式)、ARM A32、Thumb-2、AArch64、MIPS32(大/小端)、MIPS64(小端)、PowerPC32(大端)、SPARC V8(大端)
 - **syscall 控制台**：x86-64 `syscall`、x86-32 `int 0x80`、ARM/AArch64 `svc`、MIPS `syscall` 的 write/exit 已接好
-- **界面**：深/浅/跟随系统主题、中/英双语、分享链接（编码全部状态到 URL hash）
+- **界面**：深/浅/跟随系统主题、中/英双语、分享链接（状态编码进 URL hash，含机器码页内容）、底部日志面板
 
 ## 已知引擎限制（均已记录并在 UI 中规避）
 
@@ -57,7 +63,7 @@ npm start          # 本地静态服务（端口 8899），浏览器打开 http:
 
 ```bash
 npm install       # 安装测试依赖（三个引擎的 npm 构建）
-npm test          # node test/run.js —— 72 个测试：预处理/汇编/调试核心/架构表/i18n
+npm test          # node test/run.js —— 100 个测试：预处理/汇编/调试核心/机器码⇄源码/架构表/i18n
 npm start         # 本地静态服务（端口 8899）
 ```
 
@@ -71,6 +77,8 @@ css/style.css         双主题样式（design tokens）
 js/arches.js          架构定义表（寄存器/模式/示例/注释规则）
 js/preproc.js         伪指令预处理（位置计数器/数据段/符号/表达式）
 js/assembler.js       汇编流水线核心（多轮布局收敛、逐行诊断、输入防护）
+js/hexio.js           机器码文本解析（含 @code/@data 分区）与镜像→源码生成
+js/applog.js          底部日志面板（分级/过滤/折叠）
 js/session-payload.js 调试会话载荷构建
 js/emu-core.js        Unicorn 调试会话核心（步进/断点/暂停/分块恢复）
 js/unicorn-worker.js  模拟执行 Worker（会话协议）

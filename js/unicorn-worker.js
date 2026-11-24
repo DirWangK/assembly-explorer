@@ -20,13 +20,21 @@
  */
 'use strict';
 
+/* 依赖脚本带上与 Worker 相同的版本参数，避免代理/浏览器缓存住旧实现 */
+const VERSION_Q = (function () {
+  try {
+    const v = new URL(self.location.href).searchParams.get('v');
+    return v ? '?v=' + encodeURIComponent(v) : '';
+  } catch (e) { return ''; }
+})();
+
 let uc = null;
 
 self.onmessage = async (ev) => {
   const msg = ev.data;
   try {
     if (msg.type === 'load') {
-      importScripts('../js/emu-core.js', '../vendor/unicorn_' + msg.ucFile + '.js');
+      importScripts('../js/emu-core.js' + VERSION_Q, '../vendor/unicorn_' + msg.ucFile + '.js');
       const factory = self.MUnicorn;
       uc = await factory();
       self.postMessage({ type: 'ready' });

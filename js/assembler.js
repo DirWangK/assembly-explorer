@@ -183,11 +183,12 @@
         return;
       }
       seg.bytes = result.bytes;
-      totalInsns += result.count;
       totalBytes += seg.bytes.length;
-      /* 成功：逐行汇编生成侧栏字节 */
+      /* 成功：逐行汇编生成侧栏字节；指令数按"真正产出字节的行"统计
+       * （Keystone 的 count 会把纯标签行也算进去，与反汇编行数不一致） */
       let off = 0;
       let deferred = false;
+      let insnsInSeg = 0;
       for (const p of seg.parts) {
         const L = p.text.trim();
         const li = lineInfo[p.lineNo];
@@ -198,6 +199,7 @@
           li.bytes = Uint8Array.from(r.mc);
           li.offset = off;
           off += r.mc.length;
+          insnsInSeg++;
         } else if (r && !r.failed) {
           li.bytes = [];
           li.offset = off;
@@ -207,6 +209,7 @@
           deferredLines.push(p.lineNo);
         }
       }
+      totalInsns += insnsInSeg;
       void deferred;
     });
     const deferredAny = deferredLines.length > 0;
