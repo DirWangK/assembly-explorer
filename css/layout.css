@@ -164,7 +164,15 @@
   gap: 10px;
   padding-top: 2px;
 }
-.engine-load-text { font-size: 11px; color: var(--text-dim); min-width: 158px; }
+.engine-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warn);
+  flex: 0 0 auto;
+  animation: pulse 1s ease-in-out infinite;
+}
+.engine-load-text { font-size: 11px; color: var(--text-dim); min-width: 158px; max-width: 62%; line-height: 1.4; }
 .engine-track {
   flex: 1;
   height: 6px;
@@ -172,6 +180,7 @@
   background: var(--bg-inset);
   border: 1px solid var(--border);
   overflow: hidden;
+  min-width: 80px;
 }
 .engine-fill {
   height: 100%;

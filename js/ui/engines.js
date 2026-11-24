@@ -60,7 +60,7 @@
       },
       onMsg(m) {
         if (!m) return;
-        if (m.type === 'ready') { LOG.ok('KS', 'Keystone 就绪'); this._res(); }
+        if (m.type === 'ready') { LOG.ok('KS', 'Keystone 就绪（' + Math.round(performance.now() - boot.start) + 'ms）'); this._res(); }
         else if (m.type === 'load-error') { LOG.error('KS', 'Keystone 加载失败: ' + m.message); this._rej(new Error(m.message)); }
         else {
           const p = this.pending.get(m.id);
@@ -113,7 +113,7 @@
       },
       onMsg(m) {
         if (!m) return;
-        if (m.type === 'ready') { LOG.ok('UC', 'Unicorn(' + arch().uc.file + ') 就绪'); this._res(); }
+        if (m.type === 'ready') { LOG.ok('UC', 'Unicorn(' + arch().uc.file + ') 就绪（' + Math.round(performance.now() - boot.start) + 'ms）'); this._res(); }
         else if (m.type === 'load-error') { LOG.error('UC', 'Unicorn 加载失败: ' + m.message); this._rej(new Error(m.message)); }
         else {
           const p = this.pending.get(m.id);
@@ -171,6 +171,7 @@
       boot.done = true;
       boot.failed = false;
       el.classList.remove('failed');
+      el.setAttribute('aria-busy', 'false');
       $('engine-load-text').textContent = I('boot.ready');
       /* 至少展示一小段时间，避免快速加载时进度条一闪而过 */
       const elapsed = performance.now() - boot.start;
@@ -187,11 +188,12 @@
     if (boot.failed) {
       el.classList.add('failed');
       el.classList.remove('done');
+      el.setAttribute('aria-busy', 'false');
       $('engine-load-text').textContent = I('boot.failed', { name: boot.failed });
       return;
     }
     $('engine-load-text').textContent = I('boot.loading', {
-      ready, total: names.length, name: pending[0] || '',
+      ready, total: names.length, name: pending.join(' · '),
     });
   }
 
@@ -222,6 +224,8 @@
   AE.engines = {
     arch, regList, getCs, loadCapstone, hangResult,
     makeKsHost, makeUcHost, updatePills, bootFailed,
+    csReady: () => !!CS,
+    isReady: () => !!CS && !!state.enginePills.ks,
     ks: null,   // app.js 启动时赋值
     uc: null,
   };

@@ -17,6 +17,10 @@
 
   async function assemble() {
     if (state.tab === 'hex') { runHexPipeline(); return; }
+    if (!AE.engines.isReady()) {
+      $('src-status').innerHTML = '<span class="hint">' + I('boot.waitEngines') + '</span>';
+      return;
+    }
     const a = arch();
     const seq = ++assembleSeq;
     const t0 = performance.now();
@@ -127,6 +131,10 @@
 
   const runHexPipeline = debounce(function () {
     if (state.tab !== 'hex') return;
+    if (!AE.engines.csReady()) {
+      $('hexin-status').innerHTML = '<span class="hint">' + I('boot.waitEngines') + '</span>';
+      return;
+    }
     const { parsed, regions } = hexModel();
     const res = hexResult(regions, parsed);
 

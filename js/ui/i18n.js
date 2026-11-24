@@ -167,6 +167,8 @@
       'boot.ready': '三引擎已就绪',
       'boot.readyToast': '三引擎已就绪（{ms}ms）',
       'boot.failed': '{name} 加载失败，请刷新重试',
+      'boot.unavailable': '引擎加载失败（{name}），请刷新页面重试',
+      'boot.waitEngines': '引擎仍在加载，请稍候…',
     },
     en: {
       'app.title': 'Assembly Explorer',
@@ -325,6 +327,8 @@
       'boot.ready': 'All engines ready',
       'boot.readyToast': 'All engines ready ({ms}ms)',
       'boot.failed': '{name} failed to load — please refresh',
+      'boot.unavailable': 'Engine failed to load ({name}) — please refresh',
+      'boot.waitEngines': 'Engines are still loading…',
     },
   };
 

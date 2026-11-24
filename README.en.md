@@ -50,7 +50,7 @@ No build step — the repository *is* the site, deployable to any static host.
   - Per-architecture comments: `;` `//` `#` `@` `!`
 - **11 architectures**: x86-64 / x86-32 / x86-16 (real mode), ARM A32, Thumb-2, AArch64, MIPS32 (BE/LE), MIPS64 (LE), PowerPC32 (BE), SPARC V8 (BE)
 - **syscall console**: x86-64 `syscall`, x86-32 `int 0x80`, ARM/AArch64 `svc`, MIPS `syscall` — `write`/`exit` wired up
-- **UI**: dark/light/system themes, Chinese/English UI, share links (full state in the URL hash, including the machine-code tab), bottom log panel, three-engine loading progress (Capstone / Keystone / Unicorn)
+- **UI**: dark/light/system themes, Chinese/English UI, share links (full state in the URL hash, including the machine-code tab), bottom log panel, parallel three-engine loading progress (Capstone / Keystone / Unicorn)
 
 ## Engine limitations & mitigation
 

@@ -51,7 +51,7 @@ npm start          # 本地静态服务（端口 8899），浏览器打开 http:
   - 按架构注释：`;` `//` `#` `@` `!`
 - **11 种架构**：x86-64 / x86-32 / x86-16(实模式)、ARM A32、Thumb-2、AArch64、MIPS32(大/小端)、MIPS64(小端)、PowerPC32(大端)、SPARC V8(大端)
 - **syscall 控制台**：x86-64 `syscall`、x86-32 `int 0x80`、ARM/AArch64 `svc`、MIPS `syscall` 的 write/exit 已接好
-- **界面**：深/浅/跟随系统主题、中/英双语、分享链接（状态编码进 URL hash，含机器码页内容）、底部日志面板、三引擎加载进度条（Capstone / Keystone / Unicorn）
+- **界面**：深/浅/跟随系统主题、中/英双语、分享链接（状态编码进 URL hash，含机器码页内容）、底部日志面板、三引擎并行加载进度条（Capstone / Keystone / Unicorn）
 
 ## 引擎限制与处理策略
 

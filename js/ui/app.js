@@ -4,7 +4,7 @@
 
 (function () {
   const AE = window.AE;
-  const { $ } = AE.dom;
+  const { $, I } = AE.dom;
   const state = AE.state;
   const LOG = AE.log;
   const Engines = AE.engines;
@@ -124,28 +124,51 @@
     Engines.updatePills(); // 初始进度：0/3
 
     const t0 = performance.now();
-    try {
-      await Engines.loadCapstone();
-      state.enginePills.cs = true;
-      Engines.updatePills();
-      LOG.ok('CS', 'Capstone 就绪（' + Math.round(performance.now() - t0) + 'ms）');
-    } catch (e) {
-      LOG.error('CS', 'Capstone 加载失败：' + (e && e.message || e));
-      Engines.bootFailed('Capstone');
-    }
+    /* 三引擎并行启动：Capstone 主线程实例化 + Keystone/Unicorn 两个 Worker 各自加载 */
+    const csP = Engines.loadCapstone()
+      .then(() => {
+        state.enginePills.cs = true;
+        Engines.updatePills();
+        LOG.ok('CS', 'Capstone 就绪（' + Math.round(performance.now() - t0) + 'ms）');
+        return true;
+      })
+      .catch((e) => {
+        LOG.error('CS', 'Capstone 加载失败：' + (e && e.message || e));
+        Engines.bootFailed('Capstone');
+        return false;
+      });
+    const ksP = Engines.ks.ensure()
+      .then(() => { state.enginePills.ks = true; Engines.updatePills(); return true; })
+      .catch((e) => {
+        Engines.bootFailed('Keystone');
+        LOG.error('KS', 'Keystone 加载失败：' + (e && e.message || e));
+        return false;
+      });
+    const ucP = Engines.uc.ensure()
+      .then(() => { state.enginePills.uc = true; Engines.updatePills(); return true; })
+      .catch((e) => {
+        Engines.bootFailed('Unicorn');
+        LOG.error('UC', 'Unicorn 加载失败：' + (e && e.message || e));
+        return false;
+      });
 
-    Engines.uc.ensure()
-      .then(() => { state.enginePills.uc = true; Engines.updatePills(); })
-      .catch((e) => { Engines.bootFailed('Unicorn'); LOG.error('UC', 'Unicorn 加载失败：' + (e && e.message || e)); });
-    Engines.ks.ensure()
-      .then(() => { state.enginePills.ks = true; Engines.updatePills(); })
-      .catch((e) => { Engines.bootFailed('Keystone'); LOG.error('KS', 'Keystone 加载失败：' + (e && e.message || e)); });
+    /* 首屏流水线只依赖 Capstone + Keystone；Unicorn 在后台继续加载 */
+    const [csOk, ksOk] = await Promise.all([csP, ksP]);
+    if (!csOk || !ksOk) {
+      const failed = [];
+      if (!csOk) failed.push('Capstone');
+      if (!ksOk) failed.push('Keystone');
+      $('src-status').innerHTML = '<span class="err-pill">✘ ' +
+        I('boot.unavailable', { name: failed.join(' / ') }) + '</span>';
+      return;
+    }
 
     Prefs.loadFromHash();
     Prefs.refreshSyntaxSelect();
     Prefs.refreshBaseInput();
     AE.editor.setArch(Engines.arch());
     if (state.tab !== 'hex') Input.assemble();
+    void ucP;
     console.log('engines ready in', (performance.now() - t0).toFixed(0), 'ms');
   }
 

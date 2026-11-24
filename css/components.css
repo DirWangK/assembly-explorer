@@ -35,6 +35,12 @@
 
 /* ---------------- 编辑器 ---------------- */
 .editor-host { flex: 1; min-height: 0; display: flex; }
+.editor-placeholder {
+  margin: auto;
+  color: var(--text-faint);
+  font-size: 12px;
+  letter-spacing: .2px;
+}
 .asm-editor { flex: 1; display: flex; min-width: 0; min-height: 0; }
 .ed-gutter {
   width: 46px;
