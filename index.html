@@ -2,7 +2,11 @@
 <html lang="zh-CN" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#13161c">
+<meta name="format-detection" content="telephone=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Assembly Explorer · 汇编实验室 — Keystone ⇄ Capstone ⇄ Unicorn</title>
 <meta name="description" content="浏览器里的多架构汇编实验室：Keystone 汇编、Capstone 反汇编、Unicorn 单步调试与模拟执行，全部通过 WebAssembly 运行。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='6' fill='%2313161c'/%3E%3Crect x='7' y='7' width='8' height='8' rx='1.5' fill='%23e5b567'/%3E%3Crect x='17' y='7' width='8' height='8' rx='1.5' fill='%236fc3df'/%3E%3Crect x='12' y='17' width='8' height='8' rx='1.5' fill='%23b294bb'/%3E%3C/svg%3E">
@@ -10,8 +14,9 @@
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/layout.css">
 <link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/mobile.css">
 </head>
-<body>
+<body data-mtab="src">
 
 <header class="topbar">
   <div class="brand">
@@ -26,33 +31,50 @@
     </div>
   </div>
 
-  <div class="controls">
-    <label class="ctl"><span data-i18n="ctl.arch"></span>
-      <select id="arch"></select>
-    </label>
-    <label class="ctl"><span data-i18n="ctl.syntax"></span>
-      <select id="syntax"></select>
-    </label>
-    <label class="ctl"><span data-i18n="ctl.base"></span>
-      <input id="base" value="0x10000" spellcheck="false">
-    </label>
+  <div class="tools" id="tools">
+    <div class="tools-head">
+      <span data-i18n="m.settingsTitle"></span>
+      <button class="btn small" id="m-tools-close" data-i18n="m.done"></button>
+    </div>
+
+    <div class="controls">
+      <label class="ctl"><span data-i18n="ctl.arch"></span>
+        <select id="arch"></select>
+      </label>
+      <label class="ctl"><span data-i18n="ctl.syntax"></span>
+        <select id="syntax"></select>
+      </label>
+      <label class="ctl"><span data-i18n="ctl.base"></span>
+        <input id="base" value="0x10000" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off">
+      </label>
+    </div>
+
+    <div class="controls right">
+      <div class="seg" id="theme-seg" role="group" data-i18n-title="ctl.theme" title="主题">
+        <button data-theme-opt="dark" data-i18n="theme.dark"></button>
+        <button data-theme-opt="light" data-i18n="theme.light"></button>
+        <button data-theme-opt="system" data-i18n="theme.system"></button>
+      </div>
+      <div class="seg" id="lang-seg" role="group">
+        <button data-lang-opt="zh" data-i18n="lang.zh"></button>
+        <button data-lang-opt="en" data-i18n="lang.en"></button>
+      </div>
+      <button id="share" class="btn" data-i18n="btn.share" data-i18n-title="btn.share"></button>
+      <div class="status" id="status">
+        <span class="pill">Keystone …</span><span class="pill">Capstone …</span><span class="pill">Unicorn …</span>
+      </div>
+    </div>
   </div>
 
-  <div class="controls right">
-    <div class="seg" id="theme-seg" role="group" data-i18n-title="ctl.theme" title="主题">
-      <button data-theme-opt="dark" data-i18n="theme.dark"></button>
-      <button data-theme-opt="light" data-i18n="theme.light"></button>
-      <button data-theme-opt="system" data-i18n="theme.system"></button>
-    </div>
-    <div class="seg" id="lang-seg" role="group">
-      <button data-lang-opt="zh" data-i18n="lang.zh"></button>
-      <button data-lang-opt="en" data-i18n="lang.en"></button>
-    </div>
-    <button id="share" class="btn" data-i18n="btn.share" data-i18n-title="btn.share"></button>
-    <div class="status" id="status">
-      <span class="pill">Keystone …</span><span class="pill">Capstone …</span><span class="pill">Unicorn …</span>
-    </div>
-  </div>
+  <button class="btn m-tools-btn" id="m-tools" data-i18n-title="m.settingsTitle" data-i18n-aria="m.settingsTitle" title="设置"
+    aria-label="设置" aria-expanded="false" aria-controls="tools">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" aria-hidden="true">
+      <path d="M4 7h9M19 7h1M4 17h3M13 17h7"></path>
+      <circle cx="16" cy="7" r="2.2"></circle>
+      <circle cx="10" cy="17" r="2.2"></circle>
+    </svg>
+  </button>
 
   <div class="engine-load" id="engine-load" role="status" aria-live="polite" aria-busy="true">
     <span class="engine-dot" aria-hidden="true"></span>
@@ -64,11 +86,12 @@
     <span class="engine-load-pct" id="engine-load-pct">0%</span>
   </div>
 </header>
+<div class="m-scrim" id="m-scrim" aria-hidden="true"></div>
 
 <main class="grid">
 
   <!-- 第 1 栏：输入（源码 / 机器码）+ Keystone -->
-  <section class="pane">
+  <section class="pane" data-pane="src" id="pane-src">
     <div class="pane-head">
       <span class="tag ks" data-i18n="pane1.tag"></span>
       <span class="pane-title" data-i18n="pane1.title"></span>
@@ -93,14 +116,16 @@
         <button id="hexin-import" class="btn small" data-i18n="btn.import"></button>
         <input type="file" id="hexin-file" class="hidden" accept=".bin,.hex,.txt,.s,.asm,.dump,.out">
       </div>
-      <textarea id="hexin" class="cfg-input hexin-input" rows="16" spellcheck="false" data-i18n-ph="hexin.placeholder"></textarea>
+      <textarea id="hexin" class="cfg-input hexin-input" rows="16" spellcheck="false"
+        autocapitalize="off" autocomplete="off" autocorrect="off"
+        data-i18n-ph="hexin.placeholder"></textarea>
       <div class="hexin-help" data-i18n="hexin.help"></div>
       <div id="hexin-status" class="hexin-status"></div>
     </div>
   </section>
 
   <!-- 第 2 栏：机器码 + Capstone（纯输出） -->
-  <section class="pane">
+  <section class="pane" data-pane="out" id="pane-out">
     <div class="pane-head">
       <span class="tag cs" data-i18n="pane2.tag"></span>
       <span class="pane-title" data-i18n="pane2.title"></span>
@@ -119,7 +144,7 @@
   </section>
 
   <!-- 第 3 栏：Unicorn 调试器 -->
-  <section class="pane">
+  <section class="pane" data-pane="dbg" id="pane-dbg">
     <div class="pane-head">
       <span class="tag uc" data-i18n="pane3.tag"></span>
       <span class="pane-title" data-i18n="pane3.title"></span>
@@ -141,14 +166,17 @@
         <div class="emu-config">
           <div class="cfg-col">
             <div class="cfg-label" data-i18n="pane3.envRegs"></div>
-            <textarea id="initregs" class="cfg-input" rows="3" spellcheck="false" data-i18n-ph="pane3.envRegs"></textarea>
+            <textarea id="initregs" class="cfg-input" rows="3" spellcheck="false"
+              autocapitalize="off" autocomplete="off" autocorrect="off" data-i18n-ph="pane3.envRegs"></textarea>
           </div>
           <div class="cfg-col">
             <div class="cfg-label" data-i18n="pane3.envMem"></div>
-            <textarea id="initmem" class="cfg-input" rows="3" spellcheck="false" data-i18n-ph="pane3.envMem"></textarea>
+            <textarea id="initmem" class="cfg-input" rows="3" spellcheck="false"
+              autocapitalize="off" autocomplete="off" autocorrect="off" data-i18n-ph="pane3.envMem"></textarea>
           </div>
           <label class="ctl wide"><span data-i18n="pane3.maxInsns"></span>
-            <input id="maxinsns" value="200000" spellcheck="false">
+            <input id="maxinsns" value="200000" spellcheck="false" inputmode="numeric"
+              autocapitalize="off" autocomplete="off">
           </label>
           <div id="emu-warn" class="emu-warn"></div>
         </div>
@@ -192,6 +220,22 @@
   <div class="logbody" id="logbody"></div>
 </section>
 
+<!-- 移动端底部导航（桌面隐藏）：单栏分页 + 日志 -->
+<nav class="mtabs" id="mtabs" role="tablist" aria-label="Sections">
+  <button class="mtab on" id="mtab-src" data-mtab="src" role="tab" aria-selected="true" aria-controls="pane-src">
+    <span class="mtab-dot dot-ks" aria-hidden="true"></span><span data-i18n="m.tab.src"></span>
+  </button>
+  <button class="mtab" id="mtab-out" data-mtab="out" role="tab" aria-selected="false" aria-controls="pane-out">
+    <span class="mtab-dot dot-cs" aria-hidden="true"></span><span data-i18n="m.tab.out"></span>
+  </button>
+  <button class="mtab" id="mtab-dbg" data-mtab="dbg" role="tab" aria-selected="false" aria-controls="pane-dbg">
+    <span class="mtab-dot dot-uc" aria-hidden="true"></span><span data-i18n="m.tab.dbg"></span>
+  </button>
+  <button class="mtab" id="mtab-log" data-mtab="log" role="tab" aria-selected="false" aria-controls="logbar">
+    <span class="mtab-dot" aria-hidden="true"></span><span data-i18n="m.tab.log"></span>
+  </button>
+</nav>
+
 <footer class="foot">
   <span data-i18n="foot.pipeline"></span>
   <span class="dim" data-i18n="foot.tech"></span>
@@ -210,7 +254,7 @@
       <div class="mem-badges" id="mem-badges"></div>
       <div class="mem-row">
         <label class="mem-field"><span data-i18n="mem.addr">起始地址</span>
-          <input id="mem-addr" spellcheck="false" autocomplete="off">
+          <input id="mem-addr" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off">
         </label>
         <label class="mem-field"><span data-i18n="mem.size">大小</span>
           <select id="mem-size">
@@ -222,7 +266,7 @@
         </label>
       </div>
       <label class="mem-field hidden" id="mem-custom-wrap"><span data-i18n="mem.customKb">自定义（KiB）</span>
-        <input id="mem-custom" value="4" spellcheck="false">
+        <input id="mem-custom" value="4" spellcheck="false" inputmode="numeric" autocomplete="off">
       </label>
 
       <div class="mem-label" data-i18n="mem.data">写入数据（可选）</div>
@@ -232,6 +276,7 @@
         <button data-kind="file" data-i18n="mem.dataFile">文件</button>
       </div>
       <textarea id="mem-data-text" class="cfg-input mem-textarea hidden" rows="3" spellcheck="false"
+        autocapitalize="off" autocomplete="off" autocorrect="off"
         data-i18n-ph="mem.dataPh"></textarea>
       <div id="mem-file-row" class="mem-file hidden">
         <button class="btn small" id="mem-file-btn" data-i18n="mem.filePick">选择文件</button>
@@ -258,7 +303,7 @@
   </div>
 </div>
 
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script src="vendor/capstone.js"></script>
 <script src="js/ui/i18n.js"></script>
@@ -275,6 +320,7 @@
 <script src="js/ui/memfault.js"></script>
 <script src="js/ui/input.js"></script>
 <script src="js/ui/prefs.js"></script>
+<script src="js/ui/mobile.js"></script>
 <script src="js/ui/app.js"></script>
 </body>
 </html>

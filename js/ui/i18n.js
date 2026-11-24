@@ -32,6 +32,12 @@
       'btn.stepIn': '步入',
       'btn.stop': '停止',
       'btn.autoRun': '自动运行',
+      'm.settingsTitle': '设置',
+      'm.done': '完成',
+      'm.tab.src': '汇编',
+      'm.tab.out': '反汇编',
+      'm.tab.dbg': '调试',
+      'm.tab.log': '日志',
       'pane1.tag': '① Keystone · 汇编器',
       'pane1.title': '源码 / 机器码',
       'pane2.tag': '② Capstone · 反汇编',
@@ -192,6 +198,12 @@
       'btn.stepIn': 'Step In',
       'btn.stop': 'Stop',
       'btn.autoRun': 'Auto run',
+      'm.settingsTitle': 'Settings',
+      'm.done': 'Done',
+      'm.tab.src': 'Asm',
+      'm.tab.out': 'Disasm',
+      'm.tab.dbg': 'Debug',
+      'm.tab.log': 'Log',
       'pane1.tag': '① Keystone · Assembler',
       'pane1.title': 'Source / Machine code',
       'pane2.tag': '② Capstone · Disassembler',
@@ -374,6 +386,9 @@
     });
     scope.querySelectorAll('[data-i18n-title]').forEach((el) => {
       el.setAttribute('title', t(el.getAttribute('data-i18n-title')));
+    });
+    scope.querySelectorAll('[data-i18n-aria]').forEach((el) => {
+      el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria')));
     });
     document.documentElement.lang = current === 'zh' ? 'zh-CN' : 'en';
   }

@@ -11,7 +11,14 @@
 }
 .btn.dbg { padding: 4px 11px; font-size: 12px; line-height: 1; }
 .auto { margin-left: 6px; cursor: pointer; user-select: none; }
-.auto input { accent-color: var(--uc); width: 14px; height: 14px; }
+.auto input,
+.ctl.chk input {
+  accent-color: var(--uc);
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  flex: 0 0 auto;
+}
 .dbg-state {
   margin-left: auto;
   font-size: 11px;

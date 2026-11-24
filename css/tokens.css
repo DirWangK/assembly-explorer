@@ -2,6 +2,7 @@
 
 /* ---------------- 主题令牌 ---------------- */
 html[data-theme='dark'] {
+  color-scheme: dark;
   --bg: #13161c;
   --bg-pane: #1a1e26;
   --bg-inset: #10131a;
@@ -43,6 +44,7 @@ html[data-theme='dark'] {
   --tag-uc-fg: #1c1420;
 }
 html[data-theme='light'] {
+  color-scheme: light;
   --bg: #f2f4f7;
   --bg-pane: #ffffff;
   --bg-inset: #eef1f5;

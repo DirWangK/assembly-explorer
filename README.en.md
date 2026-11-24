@@ -51,6 +51,7 @@ No build step — the repository *is* the site, deployable to any static host.
 - **11 architectures**: x86-64 / x86-32 / x86-16 (real mode), ARM A32, Thumb-2, AArch64, MIPS32 (BE/LE), MIPS64 (LE), PowerPC32 (BE), SPARC V8 (BE)
 - **syscall console**: x86-64 `syscall`, x86-32 `int 0x80`, ARM/AArch64 `svc`, MIPS `syscall` — `write`/`exit` wired up
 - **UI**: dark/light/system themes, Chinese/English UI, share links (full state in the URL hash, including the machine-code tab), bottom log panel, parallel three-engine loading progress (Capstone / Keystone / Unicorn)
+- **Mobile**: at ≤1100px the layout becomes a single-column app — bottom navigation for assembler / disassembler / debugger / logs, with architecture and theme options in a settings sheet; touch targets ≥40px, 16px inputs to prevent iOS focus zoom, layout follows the visual viewport when the keyboard opens, and the memory dialog becomes a full-width bottom sheet
 
 ## Engine limitations & mitigation
 
@@ -78,6 +79,7 @@ css/
   base.css                base: box model, page skeleton, scrollbars, selection
   layout.css              layout: topbar, three-column grid, footer, responsive
   components.css          components: buttons/badges/editor/lists/input views/log/toast
+  mobile.css              mobile: single-column tabs, bottom nav/settings sheet, touch & safe areas
 js/
   core/                   pure logic (UMD: browser, Worker and Node tests)
     arches.js             architecture table (registers/modes/examples/comment rules)
@@ -101,6 +103,7 @@ js/
     memfault.js           unmapped-memory dialog (map pages/import file/paste data)
     input.js              pane 1: source ⇄ machine-code tabs, pipeline entry
     prefs.js              theme/language/arch/base/share link
+    mobile.js             mobile tab navigation, settings sheet, visual-viewport height
     app.js                wiring & boot
 test/                     test suite (real-engine golden values + debugger behavior)
 vendor/                   bundled WASM engine builds & provenance (ATTRIBUTION.txt)

@@ -21,6 +21,8 @@
       effective = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
     }
     document.documentElement.setAttribute('data-theme', effective);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', effective === 'light' ? '#f2f4f7' : '#13161c');
     document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('on', b.dataset.themeOpt === mode));
   }
 
@@ -157,6 +159,15 @@
     const url = location.origin + location.pathname + '#' + b64;
     history.replaceState(null, '', '#' + b64);
     LOG.info('UI', '分享链接已生成（' + json.length + ' 字符状态）');
+    /* 移动端优先调起系统分享面板（微信/QQ/邮件等），不支持时回退到复制链接 */
+    const mobile = window.matchMedia && window.matchMedia('(max-width: 1100px)').matches;
+    if (mobile && navigator.share) {
+      navigator.share({ title: document.title, url }).catch((err) => {
+        if (err && err.name === 'AbortError') return;
+        copyText(url, I('btn.shareDone'), I('btn.shareFallback'));
+      });
+      return;
+    }
     copyText(url, I('btn.shareDone'), I('btn.shareFallback'));
   }
 

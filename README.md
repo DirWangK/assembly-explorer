@@ -52,6 +52,7 @@ npm start          # 本地静态服务（端口 8899），浏览器打开 http:
 - **11 种架构**：x86-64 / x86-32 / x86-16(实模式)、ARM A32、Thumb-2、AArch64、MIPS32(大/小端)、MIPS64(小端)、PowerPC32(大端)、SPARC V8(大端)
 - **syscall 控制台**：x86-64 `syscall`、x86-32 `int 0x80`、ARM/AArch64 `svc`、MIPS `syscall` 的 write/exit 已接好
 - **界面**：深/浅/跟随系统主题、中/英双语、分享链接（状态编码进 URL hash，含机器码页内容）、底部日志面板、三引擎并行加载进度条（Capstone / Keystone / Unicorn）
+- **移动端**：≤1100px 自动切换为单栏应用式布局——底部导航切换汇编 / 反汇编 / 调试 / 日志，顶栏设置抽屉收纳架构与主题选项；触控目标不小于 40px，编辑器与输入框使用 16px 字号避免 iOS 聚焦缩放，软键盘弹出时按可视视口收缩布局，内存弹窗改为底部全宽面板
 
 ## 引擎限制与处理策略
 
@@ -79,6 +80,7 @@ css/
   base.css                基础：盒模型、页面骨架、滚动条、选区
   layout.css              布局：顶栏、三栏网格、页脚、响应式
   components.css          组件：按钮/徽标/编辑器/列表/输入视图/日志面板/toast
+  mobile.css              移动端：单栏分页、底部导航/设置抽屉、触控与安全区
 js/
   core/                   纯逻辑层（UMD，浏览器、Worker、Node 测试共用）
     arches.js             架构定义表（寄存器/模式/示例/注释规则）
@@ -102,6 +104,7 @@ js/
     memfault.js           未映射内存引导弹窗（映射页/导入文件/粘贴数据）
     input.js              第 1 栏：源码⇄机器码双页与流水线入口
     prefs.js              主题/语言/架构/基址/分享链接
+    mobile.js             移动端单栏导航、设置抽屉、软键盘高度
     app.js                装配与启动
 test/                     测试套件（真实引擎 golden 值 + 调试行为）
 vendor/                   三引擎 WASM 构建与来源说明（ATTRIBUTION.txt）

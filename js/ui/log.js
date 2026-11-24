@@ -111,6 +111,8 @@
 
     appendRow(e) {
       if (!this.node) return;
+      const empty = this.node.body.querySelector('.log-empty');
+      if (empty) empty.remove();
       const div = document.createElement('div');
       div.innerHTML = this.rowHtml(e);
       this.node.body.appendChild(div.firstChild);
