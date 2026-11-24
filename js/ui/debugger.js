@@ -31,29 +31,59 @@
     return payload;
   }
 
+  /* 程序指纹：架构/基址/上限/初始寄存器与内存/镜像字节 → 判断是否需要重建会话 */
+  function programKey(res) {
+    if (!res || !res.ok) return null;
+    let h = 2166136261;
+    for (const seg of res.image || []) {
+      h = Math.imul(h ^ (seg.addr >>> 0), 16777619);
+      h = Math.imul(h ^ (seg.bytes.length >>> 0), 16777619);
+      for (let i = 0; i < seg.bytes.length; i++) h = Math.imul(h ^ seg.bytes[i], 16777619);
+    }
+    return [
+      state.archId, state.base, state.maxCount,
+      $('initregs').value, $('initmem').value,
+      res.startAddr, res.untilAddr, h >>> 0,
+    ].join('|');
+  }
+
   function startDebugSession() {
     return runSession(true);
+  }
+
+  /* 让进行中的运行先收敛（pause + 等待），避免 Worker 中会话被并发关闭 */
+  async function haltRun() {
+    if (!dbg.runPromise) return;
+    const prev = dbg.runPromise;
+    ++dbg.seq;
+    AE.engines.uc.call({ type: 'pause' });
+    try { await prev; } catch (e) { /* 旧运行错误可忽略 */ }
+    dbg.runPromise = null;
   }
 
   /* 创建会话并渲染初始状态；autoResume=true 时连续运行到结束/断点 */
   async function runSession(autoResume) {
     const res = state.last;
     if (!res || !res.ok || !res.image.some(s => s.bytes.length)) {
-      dbg.state = 'idle';
-      renderDbgState();
+      await haltRun();
+      endSession(true);
+      dbg.programKey = null;
       $('emu-meta').textContent = I('waitValid');
       return;
     }
     if (!hasCodeSegs(res)) {
       /* 纯数据程序：没有可执行指令，不启动调试器 */
+      await haltRun();
       endSession(true);
       $('emu-meta').textContent = I('emu.noCode');
       LOG.info('UC', '纯数据程序（' + sumBytes(res.dataSegments) + ' 字节数据），跳过执行');
       return;
     }
+    await haltRun();
     endSession(false);
     const seq = ++dbg.seq;
     dbg.busy = true;
+    dbg.programKey = programKey(res);
     setDbgStateChip('running');
     LOG.debug('UC', '创建会话：start=' + fmtHex(res.startAddr, 4) + ' until=' + fmtHex(res.untilAddr, 4));
     const r = await AE.engines.uc.call({ type: 'session', payload: buildPayload(res) });
@@ -74,7 +104,10 @@
     applySessionState(r);
     if (!autoResume) return; // 停在起点（paused），可立即步入/步过
     // 自动连续运行
-    const r2 = await AE.engines.uc.call({ type: 'resume', chunk: 2000, breakpoints: [...dbg.breakpoints] });
+    const rp = AE.engines.uc.call({ type: 'resume', chunk: 2000, breakpoints: [...dbg.breakpoints] });
+    dbg.runPromise = rp;
+    const r2 = await rp;
+    dbg.runPromise = null;
     if (seq !== dbg.seq) return;
     applySessionState(r2);
   }
@@ -235,11 +268,12 @@
       if (rt) stopBits.push('<span class="stop-pill">' + escHtml(rt) + '</span>');
       meta.innerHTML = stopBits.join(' ') || '';
     }
-    // 按钮可用性
-    $('dbg-run').disabled = dbg.state === 'running' || dbg.state === 'pausing';
+    // 按钮可用性：running 时禁止启动/单步；单步在 idle/ended/error 会自动从起点载入
+    const busy = dbg.state === 'running' || dbg.state === 'pausing';
+    $('dbg-run').disabled = busy;
     $('dbg-pause').disabled = dbg.state !== 'running';
-    $('dbg-stepin').disabled = dbg.state !== 'paused';
-    $('dbg-stepover').disabled = dbg.state !== 'paused';
+    $('dbg-stepin').disabled = busy;
+    $('dbg-stepover').disabled = busy;
     $('dbg-stop').disabled = dbg.state === 'idle';
   }
 
@@ -259,6 +293,11 @@
     row.classList.toggle('has-bp', dbg.breakpoints.has(addr));
   }
 
+  function clearBreakpoints() {
+    dbg.breakpoints.clear();
+    document.querySelectorAll('#disasm .insrow.has-bp').forEach(el => el.classList.remove('has-bp'));
+  }
+
   function markPc() {
     const sel = '#disasm .insrow.at-pc';
     document.querySelectorAll(sel).forEach(el => el.classList.remove('at-pc'));
@@ -271,16 +310,34 @@
 
   function endSession(clear) {
     dbg.seq++;
+    dbg.runPromise = null;
     if (AE.engines.uc) AE.engines.uc.call({ type: 'end' }).catch(() => {});
     if (clear) {
-      dbg.state = 'idle'; dbg.reason = { type: 'init' }; dbg.pc = 0;
+      dbg.state = 'idle'; dbg.reason = { type: 'init' }; dbg.pc = 0; dbg.errorMsg = '';
       dbg.traceRows = []; dbg.memopsRows = []; dbg.consoleText = '';
-      dbg.instrs = 0; dbg.ms = 0; dbg.regions = [];
+      dbg.instrs = 0; dbg.ms = 0; dbg.regions = []; dbg.programKey = null;
+      dbg.initRegs = {};
+      $('regs').innerHTML = '';
+      $('emu-meta').textContent = '';
       renderTrace(); renderMemops(); renderConsole(); renderDbgState(); markPc();
     }
   }
 
-  const scheduleDebug = debounce(() => { if (state.autoEmu) startDebugSession(); }, 450);
+  /* 程序发生变化：自动运行则重跑，否则载入一个停在入口的会话（可直接单步） */
+  const scheduleDebug = debounce(async () => {
+    const res = state.last;
+    if (!res || !res.ok || !res.image.some(s => s.bytes && s.bytes.length)) {
+      await haltRun();
+      endSession(true);
+      $('emu-meta').textContent = I('waitValid');
+      return;
+    }
+    const key = programKey(res);
+    const live = dbg.state === 'paused' || dbg.state === 'running' || dbg.state === 'pausing';
+    if (live && key === dbg.programKey) return; // 程序与参数未变化，保留当前会话
+    if (state.autoEmu) startDebugSession();
+    else runSession(false);
+  }, 450);
 
   /* ---------------- 内存补齐（未映射故障弹窗 / 手动映射） ---------------- */
 
@@ -343,11 +400,23 @@
 
   /* ---------------- 调试控制 ---------------- */
 
+  /* 单步前确保有一个暂停会话：idle/ended/error 时自动从入口载入 */
+  async function ensurePaused() {
+    if (dbg.state === 'paused') return true;
+    if (dbg.state === 'running' || dbg.state === 'pausing') return false;
+    await runSession(false);
+    return dbg.state === 'paused';
+  }
+
   async function dbgRun() {
+    if (dbg.state === 'running' || dbg.state === 'pausing') return;
     if (dbg.state === 'paused') {
       const seq = ++dbg.seq;
       setDbgStateChip('running');
-      const r = await AE.engines.uc.call({ type: 'resume', chunk: 2000, breakpoints: [...dbg.breakpoints] });
+      const rp = AE.engines.uc.call({ type: 'resume', chunk: 2000, breakpoints: [...dbg.breakpoints] });
+      dbg.runPromise = rp;
+      const r = await rp;
+      dbg.runPromise = null;
       if (seq !== dbg.seq) return;
       applySessionState(r);
     } else {
@@ -356,7 +425,8 @@
   }
 
   async function dbgStepIn() {
-    if (dbg.state !== 'paused') return;
+    if (dbg.state === 'running' || dbg.state === 'pausing') return;
+    if (!(await ensurePaused())) return;
     const seq = ++dbg.seq;
     const r = await AE.engines.uc.call({ type: 'step', n: 1 });
     if (seq !== dbg.seq) return;
@@ -364,7 +434,8 @@
   }
 
   async function dbgStepOver() {
-    if (dbg.state !== 'paused') return;
+    if (dbg.state === 'running' || dbg.state === 'pausing') return;
+    if (!(await ensurePaused())) return;
     const a = arch();
     const cs = getCs();
     const pcShown = (dbg.pc & (a.thumb ? ~1 : 0xFFFFFFFF)) >>> 0;
@@ -393,14 +464,18 @@
   }
 
   async function dbgStop() {
-    /* 停止 = 结束当前运行并回到起点暂停态：可立即步入/步过/再次运行 */
-    await runSession(false);
+    if (dbg.state === 'idle') return;
+    ++dbg.seq;
+    await haltRun();
+    endSession(true);
+    LOG.info('UC', '调试会话已停止');
   }
 
   AE.debug = {
     dbg,
     runSession, startDebugSession, scheduleDebug, endSession,
     renderDbgState, setDbgStateChip, applySessionState, markPc, toggleBreakpoint,
+    clearBreakpoints,
     dbgRun, dbgStepIn, dbgStepOver, dbgStop,
     applyMemory, clearMemoryExtras, memoryExtras,
   };

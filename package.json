@@ -1,6 +1,6 @@
 {
   "name": "assembly-explorer",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Multi-architecture assembly playground: Keystone (assemble) -> Capstone (disassemble) -> Unicorn (emulate/debug), all via WebAssembly. No backend.",
   "private": true,
   "type": "commonjs",

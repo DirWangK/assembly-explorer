@@ -22,7 +22,11 @@
     });
     $('maxinsns').addEventListener('change', () => {
       const v = parseInt($('maxinsns').value, 10);
-      if (v > 0 && v <= 20000000) { state.maxCount = v; Debug.startDebugSession(); }
+      if (v > 0 && v <= 20000000) {
+        state.maxCount = v;
+        if (state.autoEmu) Debug.startDebugSession();
+        else Debug.runSession(false);
+      }
     });
     $('autoemu').addEventListener('change', (e) => {
       state.autoEmu = e.target.checked;

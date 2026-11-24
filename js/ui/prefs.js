@@ -96,8 +96,9 @@
     const prev = arch();
     state.archId = id;
     if (prev && prev.layout.single && !arch().layout.single) state.base = 0x10000;
-    /* 架构切换后，自定义内存映射的地址不再有意义 */
+    /* 架构切换后，自定义内存映射与断点地址不再有意义 */
     if (AE.debug && AE.debug.clearMemoryExtras) AE.debug.clearMemoryExtras();
+    if (AE.debug && AE.debug.clearBreakpoints) AE.debug.clearBreakpoints();
     refreshSyntaxSelect();
     refreshBaseInput();
     AE.editor.setArch(arch());

@@ -41,6 +41,8 @@
     initRegs: {},         // name -> BigInt（会话启动时的初值）
     breakpoints: new Set(),
     busy: false,
+    runPromise: null,     // 进行中的 resume 调用（停止时先等待其收敛）
+    programKey: null,     // 当前会话对应的程序指纹（用于判断是否需要重建）
     regions: [],          // 当前会话已映射区域 [[start,end],...]（Worker 回传）
     extraMaps: [],        // 弹窗/手动添加的映射（跨会话保留，重新汇编仍生效）
     extraWrites: [],      // 弹窗/手动写入的数据 [{addr, bytes:number[]}]

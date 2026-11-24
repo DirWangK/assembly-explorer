@@ -40,7 +40,7 @@ No build step — the repository *is* the site, deployable to any static host.
   - switching back re-assembles and **audits byte differences in the log** (e.g. engine-inserted delay slots).
 - **Code / data regions**: `@code 0x10000` / `@data 0x200000` (or `.org`) mark regions; data is only shown as hex/ASCII and written back as `.byte`/`.ascii` — **never mis-decoded into garbage instructions**. Data-only programs assemble, render and share normally (the debugger explicitly reports "nothing to execute").
 - **Bottom log panel**: levels (debug/info/warn/error), module tags (KS/CS/UC/UI), timestamps, auto-scroll, level filter, clear, collapse; records assembly timing/failing lines, engine readiness & worker rebuilds, breakpoints, session stop reasons, hex parse errors, imports and conversions (also mirrored to the devtools console).
-- **Real debugger**: run / pause / step in / step over (call-aware) / breakpoints (click a disassembly row) / execution trace / memory-access log / syscall console
+- **Real debugger**: run / pause / step in / step over (call-aware) / breakpoints (click a disassembly row) / execution trace / memory-access log / syscall console; stepping from any state automatically loads a paused session at entry (no Stop needed), Stop truly ends the session and clears the view, and program changes rebuild the session to avoid stale data
 - **Guided memory faults**: an unmapped access pauses safely at the faulting instruction and opens a dialog — map 4 KiB–16 MiB pages, import a file, or paste HEX/text, then continue in place (no engine rebuild). The “Memory” button in the debug bar opens the same dialog at any time
 - **Assembly syntax**:
   - Labels (forward/backward references within a segment, resolved relatively by Keystone)
