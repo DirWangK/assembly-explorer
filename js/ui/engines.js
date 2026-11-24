@@ -4,12 +4,13 @@
 
 (function () {
   const AE = window.AE;
-  const { $, I } = AE.dom;
+  const { $, I, toast } = AE.dom;
   const state = AE.state;
   const LOG = AE.log;
 
   let CS = null;                 // Capstone 模块（MCapstone() 的产物）
   const csCache = new Map();     // archId|syntax -> Capstone 实例
+  const boot = { start: performance.now(), done: false, failed: false };
 
   function arch() { return ARCHES[state.archId]; }
   function regList(a) { return ArchesModule.regList(a); }
@@ -153,6 +154,57 @@
     };
   }
 
+  function updateBoot() {
+    const el = $('engine-load');
+    if (!el || boot.done) return;
+    const p = state.enginePills;
+    const names = [['cs', 'Capstone'], ['ks', 'Keystone'], ['uc', 'Unicorn']];
+    const ready = names.filter(([k]) => p[k]).length;
+    const pending = names.filter(([k]) => !p[k]).map(([, n]) => n);
+    const pct = Math.round(ready / names.length * 100);
+
+    $('engine-fill').style.width = pct + '%';
+    $('engine-track').setAttribute('aria-valuenow', String(pct));
+    $('engine-load-pct').textContent = pct + '%';
+
+    if (ready === names.length) {
+      boot.done = true;
+      boot.failed = false;
+      el.classList.remove('failed');
+      $('engine-load-text').textContent = I('boot.ready');
+      /* 至少展示一小段时间，避免快速加载时进度条一闪而过 */
+      const elapsed = performance.now() - boot.start;
+      const finish = () => {
+        el.classList.add('done');
+        const ms = Math.round(performance.now() - boot.start);
+        LOG.ok('UI', '三引擎就绪（' + ms + 'ms）');
+        toast(I('boot.readyToast', { ms }));
+      };
+      if (elapsed < 600) setTimeout(finish, 600 - elapsed);
+      else finish();
+      return;
+    }
+    if (boot.failed) {
+      el.classList.add('failed');
+      el.classList.remove('done');
+      $('engine-load-text').textContent = I('boot.failed', { name: boot.failed });
+      return;
+    }
+    $('engine-load-text').textContent = I('boot.loading', {
+      ready, total: names.length, name: pending[0] || '',
+    });
+  }
+
+  function bootFailed(name) {
+    boot.failed = name;
+    boot.done = false;
+    const text = $('engine-load-text');
+    if (text) text.textContent = I('boot.failed', { name });
+    const el = $('engine-load');
+    if (el) { el.classList.remove('done'); el.classList.add('failed'); }
+    updatePills();
+  }
+
   function updatePills() {
     const p = state.enginePills;
     const a = arch();
@@ -164,11 +216,12 @@
       el.innerHTML = pill(p.ks, 'Keystone') + pill(p.cs, 'Capstone') +
         pill(p.uc, I('engines.uc', { arch: a.uc.file.toUpperCase() }));
     }
+    updateBoot();
   }
 
   AE.engines = {
     arch, regList, getCs, loadCapstone, hangResult,
-    makeKsHost, makeUcHost, updatePills,
+    makeKsHost, makeUcHost, updatePills, bootFailed,
     ks: null,   // app.js 启动时赋值
     uc: null,
   };

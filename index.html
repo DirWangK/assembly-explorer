@@ -51,6 +51,15 @@
     <button id="share" class="btn" data-i18n="btn.share" data-i18n-title="btn.share"></button>
     <div class="status" id="status"></div>
   </div>
+
+  <div class="engine-load" id="engine-load" role="status" aria-live="polite">
+    <span class="engine-load-text" id="engine-load-text"></span>
+    <div class="engine-track" id="engine-track" role="progressbar"
+      aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="engine-fill" id="engine-fill"></div>
+    </div>
+    <span class="engine-load-pct" id="engine-load-pct"></span>
+  </div>
 </header>
 
 <main class="grid">
@@ -117,6 +126,7 @@
       <button id="dbg-stepin" class="btn dbg" data-i18n-title="btn.stepIn" title="步入">⤵</button>
       <button id="dbg-stepover" class="btn dbg" data-i18n-title="btn.stepOver" title="步过">⏭</button>
       <button id="dbg-stop" class="btn dbg" data-i18n-title="btn.stop" title="停止">⏹</button>
+      <button id="dbg-mem" class="btn dbg" data-i18n-title="mem.titleManual" title="内存映射 / 导入数据"><span data-i18n="mem.btn">内存</span></button>
       <label class="ctl chk auto"><input type="checkbox" id="autoemu" checked><span data-i18n="btn.autoRun"></span></label>
       <span class="dbg-state" id="dbg-state"></span>
     </div>
@@ -182,6 +192,67 @@
   <span class="dim" data-i18n="foot.tech"></span>
 </footer>
 
+<div id="mem-backdrop" class="modal-backdrop hidden">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mem-title">
+    <div class="modal-head">
+      <div class="modal-head-text">
+        <div class="modal-title" id="mem-title">内存未映射</div>
+        <div class="modal-sub" id="mem-sub"></div>
+      </div>
+      <button class="btn small ghost modal-x" id="mem-x" title="✕">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="mem-badges" id="mem-badges"></div>
+      <div class="mem-row">
+        <label class="mem-field"><span data-i18n="mem.addr">起始地址</span>
+          <input id="mem-addr" spellcheck="false" autocomplete="off">
+        </label>
+        <label class="mem-field"><span data-i18n="mem.size">大小</span>
+          <select id="mem-size">
+            <option value="4096" data-i18n="mem.size4k">4 KiB（一页）</option>
+            <option value="65536" data-i18n="mem.size64k">64 KiB</option>
+            <option value="1048576" data-i18n="mem.size1m">1 MiB</option>
+            <option value="custom" data-i18n="mem.sizeCustom">自定义</option>
+          </select>
+        </label>
+      </div>
+      <label class="mem-field hidden" id="mem-custom-wrap"><span data-i18n="mem.customKb">自定义（KiB）</span>
+        <input id="mem-custom" value="4" spellcheck="false">
+      </label>
+
+      <div class="mem-label" data-i18n="mem.data">写入数据（可选）</div>
+      <div class="seg small" id="mem-data-seg">
+        <button data-kind="none" class="on" data-i18n="mem.dataNone">空页</button>
+        <button data-kind="text" data-i18n="mem.dataText">文本 / HEX</button>
+        <button data-kind="file" data-i18n="mem.dataFile">文件</button>
+      </div>
+      <textarea id="mem-data-text" class="cfg-input mem-textarea hidden" rows="3" spellcheck="false"
+        data-i18n-ph="mem.dataPh"></textarea>
+      <div id="mem-file-row" class="mem-file hidden">
+        <button class="btn small" id="mem-file-btn" data-i18n="mem.filePick">选择文件</button>
+        <span class="dim" id="mem-file-name">未选择文件</span>
+        <input type="file" id="mem-file" class="hidden">
+      </div>
+
+      <div class="mem-range" id="mem-range"></div>
+      <div class="mem-hint" id="mem-hint"></div>
+      <div class="mem-err" id="mem-err"></div>
+
+      <div class="mem-regions-wrap">
+        <div class="mem-label" data-i18n="mem.regions">当前映射</div>
+        <div class="mem-regions" id="mem-regions"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn small ghost hidden" id="mem-clear" data-i18n="mem.clear">清除自定义映射</button>
+      <span class="modal-spacer"></span>
+      <button class="btn small" id="mem-cancel" data-i18n="mem.cancel">取消</button>
+      <button class="btn small" id="mem-apply" data-i18n="mem.apply">仅映射</button>
+      <button class="btn small primary" id="mem-continue" data-i18n="mem.continue">映射并继续</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="vendor/capstone.js"></script>
@@ -196,6 +267,7 @@
 <script src="js/ui/output.js"></script>
 <script src="js/ui/editor.js"></script>
 <script src="js/ui/debugger.js"></script>
+<script src="js/ui/memfault.js"></script>
 <script src="js/ui/input.js"></script>
 <script src="js/ui/prefs.js"></script>
 <script src="js/ui/app.js"></script>

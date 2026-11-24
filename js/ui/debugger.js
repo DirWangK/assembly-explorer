@@ -25,6 +25,9 @@
     if (warnings.regs.length) $('emu-warn').textContent = I('emuwarn.badRegs', { list: warnings.regs.join(' / ') });
     else if (warnings.mem.length) $('emu-warn').textContent = I('emuwarn.badMem', { list: warnings.mem.join(' / ') });
     else $('emu-warn').textContent = '';
+    /* 弹窗/手动添加的内存映射与数据：每次建会话都带上，保证重新汇编后仍生效 */
+    for (const m of dbg.extraMaps) payload.regions.push({ addr: m.addr, size: m.size });
+    for (const w of dbg.extraWrites) payload.memInit.push({ addr: w.addr, bytes: Array.from(w.bytes) });
     return payload;
   }
 
@@ -93,10 +96,14 @@
     dbg.reason = r.reason;
     dbg.instrs = r.instrs;
     dbg.ms = r.ms;
+    if (r.regions) dbg.regions = r.regions;
     if (r.state === 'paused') {
       LOG.debug('UC', '暂停 @ ' + fmtHex(r.pc, 4) + ' · ' + reasonText(r.reason));
     } else if (r.state === 'ended' || r.state === 'error') {
       LOG.info('UC', '执行结束：' + reasonText(r.reason) + '（' + r.instrs + ' 条 / ' + r.ms + 'ms）');
+    }
+    if (r.reason && r.reason.type === 'mem-fault') {
+      LOG.warn('UC', '内存未映射：' + reasonText(r.reason) + ' · 引擎已在故障指令处暂停');
     }
     // 增量数据
     const rep = r.report || { trace: [], memops: [], console: '' };
@@ -118,6 +125,13 @@
     renderConsole();
     renderDbgState();
     markPc();
+    /* 未映射内存：弹出引导（映射页 / 导入数据后原地继续） */
+    if (r.state === 'paused' && r.reason && r.reason.type === 'mem-fault' && AE.memfault) {
+      AE.memfault.onFault(r.reason, r.pc);
+    } else if (r.state === 'error' && r.reason && r.reason.type === 'fatal' && AE.memfault &&
+               /memory|bounds|mapping/i.test(String(r.reason.message || ''))) {
+      AE.memfault.onFatal(r.reason);
+    }
   }
 
   function annotateTrace(addr, size, cs) {
@@ -195,6 +209,7 @@
       case 'bp': return I('dbg.bpHit') + ' @ ' + fmtHex(reason.addr, 4);
       case 'trace-limit': return I('reason.trace-limit');
       case 'count-limit': return I('reason.count-limit');
+      case 'mem-fault': return I('reason.memFault', { addr: fmtHex(reason.addr, 4) });
       case 'error': return reason.errnoText || I('reason.error', { errno: reason.errno });
       case 'fatal': return I('reason.fatal');
       default: return reason.type;
@@ -260,12 +275,71 @@
     if (clear) {
       dbg.state = 'idle'; dbg.reason = { type: 'init' }; dbg.pc = 0;
       dbg.traceRows = []; dbg.memopsRows = []; dbg.consoleText = '';
-      dbg.instrs = 0; dbg.ms = 0;
+      dbg.instrs = 0; dbg.ms = 0; dbg.regions = [];
       renderTrace(); renderMemops(); renderConsole(); renderDbgState(); markPc();
     }
   }
 
   const scheduleDebug = debounce(() => { if (state.autoEmu) startDebugSession(); }, 450);
+
+  /* ---------------- 内存补齐（未映射故障弹窗 / 手动映射） ---------------- */
+
+  const MAX_EXTRA_WRITE_BYTES = 512 * 1024;
+
+  function rememberMemory(maps, writes) {
+    for (const m of maps || []) {
+      if (!dbg.extraMaps.some(x => x.addr === m.addr && x.size === m.size)) {
+        dbg.extraMaps.push({ addr: m.addr, size: m.size });
+      }
+    }
+    let total = dbg.extraWrites.reduce((n, w) => n + w.bytes.length, 0);
+    for (const w of writes || []) {
+      if (!w.bytes || !w.bytes.length) continue;
+      const i = dbg.extraWrites.findIndex(x => x.addr === w.addr && x.bytes.length === w.bytes.length);
+      if (i >= 0) dbg.extraWrites.splice(i, 1);
+      if (total + w.bytes.length > MAX_EXTRA_WRITE_BYTES) {
+        LOG.warn('UC', '自定义内存数据超过 ' + (MAX_EXTRA_WRITE_BYTES / 1024) + 'KB，已忽略新增写入');
+        continue;
+      }
+      dbg.extraWrites.push({ addr: w.addr, bytes: Array.from(w.bytes) });
+      total += w.bytes.length;
+    }
+  }
+
+  function clearMemoryExtras() {
+    dbg.extraMaps = [];
+    dbg.extraWrites = [];
+    dbg.regions = [];
+    LOG.info('UC', '已清除自定义内存映射（后续会话生效）');
+  }
+
+  /* 优先在当前暂停会话内原地补齐（引擎不重建）；无会话时带自定义映射重建 */
+  async function applyMemory(opts) {
+    const maps = (opts && opts.maps) || [];
+    const writes = (opts && opts.writes) || [];
+    const cont = !!(opts && opts.continue);
+    rememberMemory(maps, writes);
+
+    if (dbg.state === 'paused' && AE.engines.uc) {
+      const r = await AE.engines.uc.call({ type: 'mem', maps, writes });
+      if (r.type === 'mem-result' && r.ok) {
+        if (r.regions) dbg.regions = r.regions;
+        LOG.ok('UC', '内存已补齐：映射 ' + maps.length + ' 段 / 写入 ' + (r.wrote || 0) + ' 字节');
+        if (cont) await dbgRun();
+        return { ok: true, wrote: r.wrote || 0 };
+      }
+      LOG.warn('UC', '内存补齐失败（' + (r.error || r.message || '会话不可用') + '），改为重建会话');
+    }
+
+    /* 会话不存在/已结束：带自定义映射重建，从起点重新运行 */
+    await runSession(false);
+    if (cont && dbg.state === 'paused') await dbgRun();
+    return { ok: true, rebuilt: true };
+  }
+
+  function memoryExtras() {
+    return { maps: dbg.extraMaps.slice(), writes: dbg.extraWrites.slice() };
+  }
 
   /* ---------------- 调试控制 ---------------- */
 
@@ -328,5 +402,6 @@
     runSession, startDebugSession, scheduleDebug, endSession,
     renderDbgState, setDbgStateChip, applySessionState, markPc, toggleBreakpoint,
     dbgRun, dbgStepIn, dbgStepOver, dbgStop,
+    applyMemory, clearMemoryExtras, memoryExtras,
   };
 })();

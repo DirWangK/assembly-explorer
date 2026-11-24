@@ -121,15 +121,25 @@
     Engines.ks = Engines.makeKsHost();
     Engines.uc = Engines.makeUcHost();
     wireEvents();
+    Engines.updatePills(); // 初始进度：0/3
 
     const t0 = performance.now();
-    await Engines.loadCapstone();
-    state.enginePills.cs = true;
-    Engines.updatePills();
-    LOG.ok('CS', 'Capstone 就绪（' + Math.round(performance.now() - t0) + 'ms）');
+    try {
+      await Engines.loadCapstone();
+      state.enginePills.cs = true;
+      Engines.updatePills();
+      LOG.ok('CS', 'Capstone 就绪（' + Math.round(performance.now() - t0) + 'ms）');
+    } catch (e) {
+      LOG.error('CS', 'Capstone 加载失败：' + (e && e.message || e));
+      Engines.bootFailed('Capstone');
+    }
 
-    Engines.uc.ensure().then(() => { state.enginePills.uc = true; Engines.updatePills(); }).catch(() => {});
-    Engines.ks.ensure().then(() => { state.enginePills.ks = true; Engines.updatePills(); }).catch(() => {});
+    Engines.uc.ensure()
+      .then(() => { state.enginePills.uc = true; Engines.updatePills(); })
+      .catch((e) => { Engines.bootFailed('Unicorn'); LOG.error('UC', 'Unicorn 加载失败：' + (e && e.message || e)); });
+    Engines.ks.ensure()
+      .then(() => { state.enginePills.ks = true; Engines.updatePills(); })
+      .catch((e) => { Engines.bootFailed('Keystone'); LOG.error('KS', 'Keystone 加载失败：' + (e && e.message || e)); });
 
     Prefs.loadFromHash();
     Prefs.refreshSyntaxSelect();

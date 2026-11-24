@@ -156,6 +156,34 @@
 .foot a:hover { text-decoration: underline; }
 .ks-t { color: var(--ks); } .cs-t { color: var(--cs); } .uc-t { color: var(--uc); }
 
+/* ---------------- 引擎加载进度 ---------------- */
+.engine-load {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 2px;
+}
+.engine-load-text { font-size: 11px; color: var(--text-dim); min-width: 158px; }
+.engine-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.engine-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--ks), var(--cs), var(--uc));
+  transition: width .25s ease;
+}
+.engine-load-pct { font-family: var(--mono); font-size: 10.5px; color: var(--text-faint); min-width: 34px; text-align: right; }
+.engine-load.done { display: none; }
+.engine-load.failed .engine-fill { background: var(--err); }
+.engine-load.failed .engine-load-text { color: var(--err); }
+
 /* ---------------- 响应式 ---------------- */
 @media (max-width: 1100px) {
   body { overflow: auto; }

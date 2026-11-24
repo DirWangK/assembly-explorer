@@ -12,9 +12,12 @@
  *   - HOOK_MEM_WRITE / HOOK_MEM_READ：内存访问日志（带上限）
  *   - syscall/int 0x80/svc：控制台输出与 exit（按架构 ABI）
  *
- * 错误分两层：
- *   - wasm RuntimeError（未映射内存等）：会话状态 'error'，引擎句柄作废；
- *     模块本身仍可用，下一次 createSession 建新句柄即可。
+ * 错误分三层：
+ *   - 未映射内存：HOOK_MEM_UNMAPPED 在故障指令处捕获并 emu_stop（不触发 wasm
+ *     陷阱）。会话进入 'paused' + reason.type='mem-fault'，引擎保持可用；
+ *     调用 mapMemory()/writeMemory() 补齐内存后可从当前 PC 继续执行。
+ *   - wasm RuntimeError（钩子未覆盖的极端情况）：会话状态 'error'，引擎句柄
+ *     作废；模块本身仍可用，下一次 createSession 建新句柄即可。
  *   - uc 错误码（无效指令等）：会话 'ended'，引擎仍可用，errno 可回读。
  */
 'use strict';
@@ -52,16 +55,13 @@
       breakpoints: new Set(),
       pauseRequested: false,
       stopReason: null,         // hook 置位
+      memFault: null,           // 未映射内存访问 {addr,size,access}
       errObj: null,
       _decoder: null,
     };
 
-    /* ---------- 内存映射：先映射声明区域，再为镜像补齐未覆盖页 ---------- */
+    /* ---------- 内存映射：按页补齐，已映射页自动跳过（幂等） ---------- */
     const covered = [];
-    for (const r of payload.regions || []) {
-      emu.mem_map(r.addr, r.size, uc.PROT_ALL);
-      covered.push([r.addr, r.addr + r.size]);
-    }
     function coveredFully(a, b) {
       return covered.some(([x, y]) => a >= x && b <= y);
     }
@@ -69,17 +69,42 @@
       const start = Math.floor(a / PAGE) * PAGE;
       let end = Math.ceil(b / PAGE) * PAGE;
       if (end <= start) end = start + PAGE;
-      emu.mem_map(start, end - start, uc.PROT_ALL);
-      covered.push([start, end]);
+      function mapRun(s, e) {
+        try {
+          emu.mem_map(s, e - s, uc.PROT_ALL);
+          covered.push([s, e]);
+        } catch (err) {
+          /* 引擎内部已映射（跨页重叠等）：逐页补齐并记录为可用 */
+          for (let p = s; p < e; p += PAGE) {
+            try { emu.mem_map(p, PAGE, uc.PROT_ALL); } catch (e2) { /* 已映射 */ }
+            covered.push([p, p + PAGE]);
+          }
+        }
+      }
+      let runStart = null;
+      for (let p = start; p < end; p += PAGE) {
+        const hit = covered.some(([x, y]) => p >= x && p < y);
+        if (hit) {
+          if (runStart !== null) { mapRun(runStart, p); runStart = null; }
+        } else if (runStart === null) {
+          runStart = p;
+        }
+      }
+      if (runStart !== null) mapRun(runStart, end);
+      return { start, end };
     }
+    for (const r of payload.regions || []) mapSpan(r.addr, r.addr + r.size);
     const images = (payload.image || []).filter(sg => sg.bytes && sg.bytes.length);
     for (const sg of images) {
       if (!coveredFully(sg.addr, sg.addr + sg.bytes.length)) mapSpan(sg.addr, sg.addr + sg.bytes.length);
     }
 
-    /* ---------- 写入镜像与运行时内存 ---------- */
+    /* ---------- 写入镜像与运行时内存（数据目标页按需补齐） ---------- */
     for (const sg of images) emu.mem_write(sg.addr, sg.bytes);
-    for (const m of payload.memInit || []) emu.mem_write(m.addr, m.bytes);
+    for (const m of payload.memInit || []) {
+      if (!coveredFully(m.addr, m.addr + m.bytes.length)) mapSpan(m.addr, m.addr + m.bytes.length);
+      emu.mem_write(m.addr, m.bytes);
+    }
 
     /* ---------- 初始寄存器 ---------- */
     for (const [cnst, val] of payload.regs || []) {
@@ -135,6 +160,23 @@
 
     /* ---------- Hook：syscall / int / svc ---------- */
     function tryHook(label, fn) { try { fn(); return true; } catch (e) { return false; } }
+
+    /* 未映射内存：在故障指令处安全暂停（emu_stop），不让 wasm 陷阱污染引擎。
+     * type 为枚举值（非位掩码）：19/20/21 = 读/写/取指未映射。 */
+    const MEM_WRITE_UNMAPPED = uc.MEM_WRITE_UNMAPPED !== undefined ? uc.MEM_WRITE_UNMAPPED : 20;
+    const MEM_FETCH_UNMAPPED = uc.MEM_FETCH_UNMAPPED !== undefined ? uc.MEM_FETCH_UNMAPPED : 21;
+    const MEM_WRITE_PROT = uc.MEM_WRITE_PROT !== undefined ? uc.MEM_WRITE_PROT : 22;
+    const MEM_FETCH_PROT = uc.MEM_FETCH_PROT !== undefined ? uc.MEM_FETCH_PROT : 24;
+    tryHook('HOOK_MEM_UNMAPPED', () =>
+      emu.hook_add(uc.HOOK_MEM_UNMAPPED, (e, type, addr, size) => {
+        if (!s.memFault) {
+          const access = (type === MEM_FETCH_UNMAPPED || type === MEM_FETCH_PROT) ? 'x'
+            : (type === MEM_WRITE_UNMAPPED || type === MEM_WRITE_PROT) ? 'w' : 'r';
+          s.memFault = { addr: Number(addr), size: Math.max(1, Number(size) || 1), access };
+        }
+        e.emu_stop();
+        return true;
+      }, 1, 1, 0));
 
     tryHook('HOOK_CODE', () =>
       emu.hook_add(uc.HOOK_CODE, (e, addr, size) => {
@@ -243,11 +285,23 @@
     }
 
     /* ---------- 运行原语 ---------- */
+    const CODE_START = payload.startAddr | 0;
+    const CODE_END = payload.untilAddr | 0;
+    function inCode(pc) { return pc >= CODE_START && pc < CODE_END; }
+    /* 跳出原代码区（如 mapped-code 取指）后，原 until 位于当前 PC 之前，
+     * Unicorn 会异常；改为给一个前向窗口，靠 count/stopReason 收敛。 */
+    function untilFor(pc) {
+      if (pc < CODE_END) return CODE_END;
+      const t = pc + 0x100000;
+      return t <= 0xFFFFFFFF ? t : 0xFFFFFFFF;
+    }
+
     // 返回 {fatal:bool, err} 或 null；s.instrs 由 hook 递增，可计算块内执行数
     function runChunk(begin, until, count) {
       try {
         const t0 = Date.now();
         s.stopReason = null;
+        s.memFault = null;
         emu.emu_start(payload.thumb ? ((begin | 1) >>> 0) : begin, until, 0, count);
         s.ms += Date.now() - t0;
         return null;
@@ -263,12 +317,21 @@
      *    （不同架构的 PC 读数语义不同：MIPS 停在当前指令、x86 停在下一条，
      *     因此不能依赖 PC >= until 判断）
      *  - count 用尽且未到 until → 分块继续（paused）。 */
-    function finishRun(runErr, executed, countWanted, untilOverride) {
+    function finishRun(runErr, executed, countWanted, untilOverride, begin) {
       if (runErr && runErr.fatal) {
         s.state = 'error';
         s.reason = { type: 'fatal', message: String(runErr.err && runErr.err.message || runErr.err) };
         try { emu.close(); } catch (e) { /* 引擎句柄已污染 */ }
         return false;
+      }
+      /* 未映射内存：引擎安全暂停，等待宿主补齐内存后原地继续 */
+      if (s.memFault) {
+        const f = s.memFault;
+        s.memFault = null;
+        s.pc = readPc();
+        s.state = 'paused';
+        s.reason = { type: 'mem-fault', addr: f.addr, size: f.size, access: f.access };
+        return true;
       }
       s.pc = readPc();
       if (s.stopReason) {
@@ -295,7 +358,7 @@
         s.reason = { type: 'paused' };
         return true;
       }
-      if (executed < countWanted || s.pc >= (payload.untilAddr | 0)) {
+      if (executed < countWanted || (inCode(begin) && s.pc >= CODE_END)) {
         s.state = 'ended';
         s.reason = { type: 'ended' };
         return false;
@@ -313,8 +376,8 @@
       const count = n || 1;
       const override = (until !== undefined && until !== (payload.untilAddr | 0)) ? until : null;
       const before = s.instrs;
-      const runErr = runChunk(begin, until || (payload.untilAddr | 0), count);
-      finishRun(runErr, s.instrs - before, count, override);
+      const runErr = runChunk(begin, until || untilFor(begin), count);
+      finishRun(runErr, s.instrs - before, count, override, begin);
       return s.snapshotMeta();
     };
 
@@ -329,11 +392,12 @@
       s.resumePc = s.pc;
       let chunks = 0;
       while (s.state === 'running') {
+        const begin = s.pc;
         const before = s.instrs;
-        const runErr = runChunk(s.pc, payload.untilAddr | 0, chunk);
+        const runErr = runChunk(begin, untilFor(begin), chunk);
         const executed = s.instrs - before;
         if (runErr || s.stopReason) {
-          finishRun(runErr, executed, chunk);
+          finishRun(runErr, executed, chunk, null, begin);
           break;
         }
         if (s.pauseRequested) {
@@ -342,7 +406,7 @@
           s.reason = { type: 'paused' };
           break;
         }
-        if (executed < chunk || s.pc >= (payload.untilAddr | 0)) {
+        if (executed < chunk || (inCode(begin) && s.pc >= CODE_END)) {
           s.pc = readPc();
           s.state = 'ended';
           s.reason = { type: 'ended' };
@@ -363,6 +427,45 @@
     s.pause = function () { s.pauseRequested = true; };
 
     s.setBreakpoints = function (list) { s.breakpoints = new Set((list || []).map(Number)); };
+
+    /* 内存补齐（弹窗/手动映射共用）：已映射页自动跳过，返回实际页对齐范围 */
+    s.mapMemory = function (addr, size) {
+      const a = Math.max(0, Math.floor(Number(addr) || 0));
+      const n = Math.max(1, Math.floor(Number(size) || PAGE));
+      return mapSpan(a, a + n);
+    };
+
+    s.writeMemory = function (addr, bytes) {
+      try {
+        const u8 = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes || []);
+        if (!u8.length) return 0;
+        emu.mem_write(Math.max(0, Math.floor(Number(addr) || 0)), u8);
+        return u8.length;
+      } catch (e) {
+        return 0;
+      }
+    };
+
+    s.readMemory = function (addr, size) {
+      try {
+        const n = Math.max(1, Math.floor(Number(size) || 1));
+        return Array.from(emu.mem_read(Math.max(0, Math.floor(Number(addr) || 0)), n));
+      } catch (e) {
+        return null;
+      }
+    };
+
+    /* 已映射区域（合并相邻页，供 UI 展示） */
+    s.regions = function () {
+      const sorted = covered.slice().sort((x, y) => x[0] - y[0]);
+      const out = [];
+      for (const [a, b] of sorted) {
+        const last = out[out.length - 1];
+        if (last && a <= last[1]) last[1] = Math.max(last[1], b);
+        else out.push([a, b]);
+      }
+      return out;
+    };
 
     s.end = function () {
       if (s.state !== 'error') { try { emu.close(); } catch (e) { /* 已污染 */ } }

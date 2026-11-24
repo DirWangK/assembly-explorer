@@ -11,11 +11,13 @@
  *   {type:'step',   id, n?, until?}              步入 n 条（until 用于"步过到返回地址"）
  *   {type:'resume', id, chunk?, breakpoints?}    连续运行（块间响应 pause / 断点）
  *   {type:'pause',  id}                          请求暂停（下一块边界生效）
+ *   {type:'mem',    id, maps, writes}            补齐内存（映射页 + 写入字节），用于故障恢复
  *   {type:'end',    id}                          结束会话
  * 协议（出）：
  *   {type:'ready'} / {type:'load-error', message}
- *   {type:'session-ready', id, pc, reason, report}
+ *   {type:'session-ready', id, pc, reason, regions, report}
  *   {type:'session-state', id, state, pc, reason, regs, instrs, ms, report}
+ *   {type:'mem-result', id, ok, wrote, regions, state, pc, reason, report}
  *   {type:'error', id, message, fatal}           意外错误（宿主可重建 Worker）
  */
 'use strict';
@@ -47,7 +49,21 @@ self.onmessage = async (ev) => {
       session = EmuCore.createSession(uc, msg.payload);
       repIdx = { trace: 0, mem: 0, consoleBytes: 0 };
       const meta = session.snapshotMeta();
-      self.postMessage(Object.assign({ type: 'session-ready', id: msg.id, report: report() }, meta));
+      self.postMessage(Object.assign({ type: 'session-ready', id: msg.id, regions: session.regions(), report: report() }, meta));
+      return;
+    }
+    if (msg.type === 'mem') {
+      if (!session) {
+        self.postMessage({ type: 'mem-result', id: msg.id, ok: false, error: '无活动会话', regions: [], report: { trace: [], memops: [], console: '' } });
+        return;
+      }
+      for (const m of msg.maps || []) session.mapMemory(m.addr, m.size);
+      let wrote = 0;
+      for (const w of msg.writes || []) {
+        wrote += session.writeMemory(w.addr, Uint8Array.from(w.bytes || []));
+      }
+      const meta = session.snapshotMeta();
+      self.postMessage(Object.assign({ type: 'mem-result', id: msg.id, ok: true, wrote, regions: session.regions(), report: report() }, meta));
       return;
     }
     if (msg.type === 'step') {

@@ -25,7 +25,7 @@ All engines are compiled to WebAssembly (Emscripten). Pure frontend, no backend.
 git clone https://github.com/DirWangK/assembly-explorer.git
 cd assembly-explorer
 npm install        # dev dependencies (npm builds of the three engines)
-npm test           # 100 tests: preprocessor / assembler / debug core / hex⇄source / arch table / i18n
+npm test           # 103 tests: preprocessor / assembler / debug core / hex⇄source / arch table / i18n
 npm start          # local static server on port 8899
 ```
 
@@ -41,6 +41,7 @@ No build step — the repository *is* the site, deployable to any static host.
 - **Code / data regions**: `@code 0x10000` / `@data 0x200000` (or `.org`) mark regions; data is only shown as hex/ASCII and written back as `.byte`/`.ascii` — **never mis-decoded into garbage instructions**. Data-only programs assemble, render and share normally (the debugger explicitly reports "nothing to execute").
 - **Bottom log panel**: levels (debug/info/warn/error), module tags (KS/CS/UC/UI), timestamps, auto-scroll, level filter, clear, collapse; records assembly timing/failing lines, engine readiness & worker rebuilds, breakpoints, session stop reasons, hex parse errors, imports and conversions (also mirrored to the devtools console).
 - **Real debugger**: run / pause / step in / step over (call-aware) / breakpoints (click a disassembly row) / execution trace / memory-access log / syscall console
+- **Guided memory faults**: an unmapped access pauses safely at the faulting instruction and opens a dialog — map 4 KiB–16 MiB pages, import a file, or paste HEX/text, then continue in place (no engine rebuild). The “Memory” button in the debug bar opens the same dialog at any time
 - **Assembly syntax**:
   - Labels (forward/backward references within a segment, resolved relatively by Keystone)
   - Directives: `.org` `.align` `.byte` `.short/.word/.long/.quad` `.ascii/.asciz/.string` `.space/.zero` `.equ` (also `NAME = EXPR`); common headers like `.global/.text/.data` are accepted and ignored
@@ -49,12 +50,12 @@ No build step — the repository *is* the site, deployable to any static host.
   - Per-architecture comments: `;` `//` `#` `@` `!`
 - **11 architectures**: x86-64 / x86-32 / x86-16 (real mode), ARM A32, Thumb-2, AArch64, MIPS32 (BE/LE), MIPS64 (LE), PowerPC32 (BE), SPARC V8 (BE)
 - **syscall console**: x86-64 `syscall`, x86-32 `int 0x80`, ARM/AArch64 `svc`, MIPS `syscall` — `write`/`exit` wired up
-- **UI**: dark/light/system themes, Chinese/English UI, share links (full state in the URL hash, including the machine-code tab), bottom log panel
+- **UI**: dark/light/system themes, Chinese/English UI, share links (full state in the URL hash, including the machine-code tab), bottom log panel, three-engine loading progress (Capstone / Keystone / Unicorn)
 
-## Known engine limitations (documented and worked around in the UI)
+## Engine limitations & mitigation
 
+- Unicorn unmapped memory access: `UC_HOOK_MEM_UNMAPPED` pauses safely at the faulting instruction; the dialog maps pages / imports files / pastes HEX or text and execution continues in place (no engine rebuild). Fetch faults prompt for complete executable code; if a hook miss triggers a wasm trap, the engine is rebuilt and the same dialog maps memory manually
 - Keystone wasm hangs on a few malformed inputs: blocked by a character whitelist + instruction-shape validation, and assembly runs in a watchdog-guarded Worker (the engine is rebuilt on timeout; the main thread never freezes)
-- Unicorn wasm throws on unmapped memory access: sessions run in a Worker and the engine handle is rebuilt automatically after a trap
 - Unicorn's PPC64 build throws `UC_ERR_EXCEPTION` on init → PPC32 is provided; MIPS64 has broken exception handling for `sd/ld/dsrl` etc. → examples only use verified instructions
 - Keystone's explicit `OPT_SYNTAX_INTEL/NASM` parses bare numbers as hex → no syntax option is set by default (decimal radix); only AT&T sets an option
 
@@ -62,7 +63,7 @@ No build step — the repository *is* the site, deployable to any static host.
 
 ```bash
 npm install       # install test dependencies (npm builds of the three engines)
-npm test          # node test/run.js — 100 tests: preprocessor / assembler / debug core / hex⇄source / arch table / i18n
+npm test          # node test/run.js — 103 tests: preprocessor / assembler / debug core / hex⇄source / arch table / i18n
 npm start         # local static server on port 8899
 ```
 
@@ -97,6 +98,7 @@ js/
     editor.js             code editor (line numbers/highlighting/error marks)
     output.js             pane 2 rendering (hex dump / disassembly / data)
     debugger.js           pane 3: session, registers, trace, breakpoints, stepping
+    memfault.js           unmapped-memory dialog (map pages/import file/paste data)
     input.js              pane 1: source ⇄ machine-code tabs, pipeline entry
     prefs.js              theme/language/arch/base/share link
     app.js                wiring & boot

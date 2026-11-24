@@ -42,6 +42,7 @@ npm start          # 本地静态服务（端口 8899），浏览器打开 http:
 - **代码 / 数据分区**：`@code 0x10000` / `@data 0x200000`（或 `.org`）标记区域；数据区只做 hex/ASCII 展示与 `.byte`/`.ascii` 回写，**绝不被误解码成垃圾指令**；纯数据程序也能正常汇编、展示与分享（调试器会明确提示"无可执行指令"）
 - **底部日志面板**：分级（debug/info/warn/error）、模块标签（KS/CS/UC/UI）、时间戳、跟随滚动、级别过滤、清空、折叠；汇编耗时/错误行、引擎就绪与重建、断点、会话结束原因、机器码解析错误、导入与转换动作都会记录（也同步到 devtools 控制台）
 - **真实调试器**：运行 / 暂停 / 步入 / 步过（自动识别 call 类指令）/ 断点（点击反汇编行）/ 执行轨迹 / 内存访问日志 / syscall 控制台
+- **内存故障引导**：运行中访问未映射地址时，引擎在故障指令处安全暂停并弹窗——可映射 4 KiB–16 MiB 内存页、导入文件或粘贴 HEX/文本；补齐后原地继续（引擎不重建）。调试栏「内存」按钮可随时手动映射
 - **汇编语法支持**：
   - 标签（段内前向/后向引用，由 Keystone 相对解析）
   - 伪指令：`.org` `.align` `.byte` `.short/.word/.long/.quad` `.ascii/.asciz/.string` `.space/.zero` `.equ`（`NAME = EXPR` 亦可），兼容 `.global/.text/.data` 等常见头部
@@ -50,12 +51,12 @@ npm start          # 本地静态服务（端口 8899），浏览器打开 http:
   - 按架构注释：`;` `//` `#` `@` `!`
 - **11 种架构**：x86-64 / x86-32 / x86-16(实模式)、ARM A32、Thumb-2、AArch64、MIPS32(大/小端)、MIPS64(小端)、PowerPC32(大端)、SPARC V8(大端)
 - **syscall 控制台**：x86-64 `syscall`、x86-32 `int 0x80`、ARM/AArch64 `svc`、MIPS `syscall` 的 write/exit 已接好
-- **界面**：深/浅/跟随系统主题、中/英双语、分享链接（状态编码进 URL hash，含机器码页内容）、底部日志面板
+- **界面**：深/浅/跟随系统主题、中/英双语、分享链接（状态编码进 URL hash，含机器码页内容）、底部日志面板、三引擎加载进度条（Capstone / Keystone / Unicorn）
 
-## 已知引擎限制（均已记录并在 UI 中规避）
+## 引擎限制与处理策略
 
+- Unicorn 访问未映射内存：通过 `UC_HOOK_MEM_UNMAPPED` 在故障指令处安全暂停，弹窗引导映射内存页 / 导入文件 / 粘贴 HEX 或文本，补齐后原地继续（引擎不重建）。取指故障会提示写入完整可执行代码；若钩子未覆盖而触发 wasm 陷阱，则自动重建引擎并在弹窗中手动补映射
 - Keystone wasm 对个别畸形输入会挂死：已用字符白名单 + 指令形状校验拦截，且汇编运行在带看门狗的 Worker 中（超时自动重建引擎，主线程永不冻结）
-- Unicorn wasm 访问未映射内存会抛 wasm 陷阱：会话在 Worker 中运行，陷阱后自动重建引擎句柄
 - Unicorn 的 PPC64 构建初始化即抛 `UC_ERR_EXCEPTION` → 提供 PPC32；MIPS64 下 `sd/ld/dsrl` 等指令异常处理有问题 → 示例仅使用已验证指令
 - Keystone 显式 `OPT_SYNTAX_INTEL/NASM` 会把裸数字按十六进制解析 → 默认不设语法选项（十进制基数），仅 AT&T 设置选项
 
@@ -63,7 +64,7 @@ npm start          # 本地静态服务（端口 8899），浏览器打开 http:
 
 ```bash
 npm install       # 安装测试依赖（三个引擎的 npm 构建）
-npm test          # node test/run.js —— 100 个测试：预处理/汇编/调试核心/机器码⇄源码/架构表/i18n
+npm test          # node test/run.js —— 103 个测试：预处理/汇编/调试核心/机器码⇄源码/架构表/i18n
 npm start         # 本地静态服务（端口 8899）
 ```
 
@@ -98,6 +99,7 @@ js/
     editor.js             代码编辑器（行号/高亮/错误标记）
     output.js             第 2 栏渲染（hex dump / 反汇编 / 数据段）
     debugger.js           第 3 栏：会话、寄存器、轨迹、断点、单步
+    memfault.js           未映射内存引导弹窗（映射页/导入文件/粘贴数据）
     input.js              第 1 栏：源码⇄机器码双页与流水线入口
     prefs.js              主题/语言/架构/基址/分享链接
     app.js                装配与启动

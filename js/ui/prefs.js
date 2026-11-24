@@ -40,6 +40,7 @@
     document.querySelectorAll('#lang-seg button').forEach(b => b.classList.toggle('on', b.dataset.langOpt === lang));
     refreshSyntaxSelect();
     refreshBaseInput();
+    if (AE.memfault) AE.memfault.refresh();
   }
 
   /* ---------------- 架构 / 语法 / 基址 ---------------- */
@@ -95,6 +96,8 @@
     const prev = arch();
     state.archId = id;
     if (prev && prev.layout.single && !arch().layout.single) state.base = 0x10000;
+    /* 架构切换后，自定义内存映射的地址不再有意义 */
+    if (AE.debug && AE.debug.clearMemoryExtras) AE.debug.clearMemoryExtras();
     refreshSyntaxSelect();
     refreshBaseInput();
     AE.editor.setArch(arch());

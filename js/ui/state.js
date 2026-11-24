@@ -6,7 +6,7 @@
   const AE = window.AE;
 
   /* Worker 脚本版本：随构建更新，避免浏览器/代理缓存住旧的 Worker 依赖 */
-  AE.BUILD = '20261124c';
+  AE.BUILD = '20261124e';
   AE.MAX_IMPORT_BYTES = 256 * 1024;
 
   /* 编辑器实例（app.js 启动时创建） */
@@ -41,5 +41,8 @@
     initRegs: {},         // name -> BigInt（会话启动时的初值）
     breakpoints: new Set(),
     busy: false,
+    regions: [],          // 当前会话已映射区域 [[start,end],...]（Worker 回传）
+    extraMaps: [],        // 弹窗/手动添加的映射（跨会话保留，重新汇编仍生效）
+    extraWrites: [],      // 弹窗/手动写入的数据 [{addr, bytes:number[]}]
   };
 })();

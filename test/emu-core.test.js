@@ -169,18 +169,79 @@ test('暂停：无限循环中请求暂停，块边界生效', async () => {
   session.end();
 });
 
-test('致命错误：未映射内存 → 会话终止，新会话可继续', async () => {
-  const { session } = await makeSession('x86_64', { source: '_start:\n    mov rax, [0x500000]' });
+test('未映射读：安全暂停，映射/写入后可原地继续', async () => {
+  const { session } = await makeSession('x86_64', {
+    source: '_start:\n    mov rax, [0x500000]\n    mov rbx, 7',
+  });
   const meta = await session.resume({ chunk: 100 });
-  // 该 wasm 构建对未映射访问的行为：要么 wasm 陷阱（error/fatal），要么返回错误码（ended/error）
-  assert(['error', 'ended'].includes(meta.state), 'session terminated, got ' + meta.state);
-  assert(['fatal', 'error'].includes(meta.reason.type), 'fatal/error reason, got ' + JSON.stringify(meta.reason));
+  assertEq(meta.state, 'paused', 'paused at fault');
+  assertEq(meta.reason.type, 'mem-fault', 'mem-fault reason');
+  assertEq(meta.reason.access, 'r', 'read access');
+  assertEq(meta.reason.addr, 0x500000, 'fault addr');
+  assert(meta.reason.size >= 1, 'fault size');
+
+  const r = session.mapMemory(0x500000, 0x1000);
+  assertEq(r.start, 0x500000, 'page-aligned start');
+  assertEq(session.writeMemory(0x500000, [0x2a, 0, 0, 0, 0, 0, 0, 0]), 8, 'write 8 bytes');
+
+  const m2 = await session.resume({ chunk: 100 });
+  assertEq(m2.state, 'ended', 'ended after recovery');
+  assertEq(BigInt(m2.regs.RAX), 0x2an, 'RAX = 42 (re-executed load)');
+  assertEq(BigInt(m2.regs.RBX), 7n, 'following instruction executed');
   session.end();
-  // 模块可复用：新会话正常
-  const { session: s2 } = await makeSession('x86_64', { source: '_start:\n    mov eax, 42' });
-  const m2 = s2.step(1);
-  assertEq(BigInt(m2.regs.RAX), 42n, 'new session works');
-  s2.end();
+});
+
+test('未映射写：安全暂停，映射后可原地继续', async () => {
+  const { session } = await makeSession('x86_64', {
+    source: '_start:\n    mov rbx, 0x500000\n    mov qword ptr [rbx], 0x2a\n    mov rbx, 9',
+  });
+  const meta = await session.resume({ chunk: 100 });
+  assertEq(meta.state, 'paused', 'paused at fault');
+  assertEq(meta.reason.type, 'mem-fault', 'mem-fault reason');
+  assertEq(meta.reason.access, 'w', 'write access');
+  assertEq(meta.reason.addr, 0x500000, 'fault addr');
+
+  session.mapMemory(0x500000, 0x1000);
+  const m2 = await session.resume({ chunk: 100 });
+  assertEq(m2.state, 'ended', 'ended after recovery');
+  assertEq(BigInt(m2.regs.RBX), 9n, 'following instruction executed');
+  const mem = session.readMemory(0x500000, 8);
+  assertEq(mem && mem[0], 0x2a, 'stored value');
+  session.end();
+});
+
+test('未映射取指：报告 x 访问，映射代码后可继续', async () => {
+  const { session } = await makeSession('x86_64', {
+    source: '_start:\n    mov rax, 0x600000\n    jmp rax',
+  });
+  const meta = await session.resume({ chunk: 100 });
+  assertEq(meta.state, 'paused', 'paused at fault');
+  assertEq(meta.reason.type, 'mem-fault', 'mem-fault reason');
+  assertEq(meta.reason.access, 'x', 'fetch access');
+  assertEq(meta.reason.addr, 0x600000, 'fault addr');
+
+  // 目标地址写入一段完整代码（mov eax,60; xor edi,edi; syscall）后继续
+  session.mapMemory(0x600000, 0x1000);
+  session.writeMemory(0x600000, [0xb8, 0x3c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05]);
+  const m2 = session.step(3);
+  assertEq(m2.state, 'ended', 'mapped code ran to exit');
+  assertEq(m2.reason.type, 'exit', 'exit reason');
+  assertEq(BigInt(m2.regs.RAX), 60n, 'mapped code executed');
+  session.end();
+});
+
+test('映射幂等：重复映射已存在页不报错，regions 合并展示', async () => {
+  const { session } = await makeSession('x86_64');
+  const r1 = session.mapMemory(0x10000, 0x1000); // 代码页已映射
+  const r2 = session.mapMemory(0x500000, 0x2000);
+  assertEq(r1.start, 0x10000, 'code page start');
+  assertEq(r2.start, 0x500000, 'new page start');
+  const regions = session.regions();
+  assert(regions.some(([a, b]) => a <= 0x500000 && 0x501000 <= b), 'new region listed');
+  // 再次映射同一范围仍然安全
+  session.mapMemory(0x500000, 0x2000);
+  assertEq(session.writeMemory(0x500000, [1, 2, 3]), 3, 'write ok');
+  session.end();
 });
 
 test('Thumb 调试：步进在 Thumb 模式下保持（R0 逐步累加）', async () => {

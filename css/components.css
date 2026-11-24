@@ -285,6 +285,101 @@
 .hexin-help { font-size: 11px; color: var(--text-faint); margin-top: 6px; line-height: 1.55; }
 .hexin-status { margin-top: 8px; font-size: 11px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
+/* ---------------- 内存映射弹窗 ---------------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(0, 0, 0, .48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal {
+  width: min(580px, 100%);
+  max-height: min(86vh, 720px);
+  background: var(--bg-pane);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.modal-head-text { min-width: 0; }
+.modal-title { font-size: 14px; font-weight: 700; }
+.modal-sub { margin-top: 4px; font-size: 11.5px; line-height: 1.65; color: var(--text-dim); }
+.modal-x { margin-left: auto; line-height: 1; }
+.modal-body { padding: 12px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.modal-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+}
+.modal-spacer { flex: 1; }
+
+.mem-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.mem-badge {
+  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  background: var(--bg-inset);
+  font-family: var(--mono);
+}
+.mem-badge.r { color: var(--cs); border-color: var(--cs); background: var(--cs-bg); }
+.mem-badge.w { color: var(--uc); border-color: var(--uc); background: var(--uc-bg); }
+.mem-badge.x { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+.mem-badge.addr { color: var(--text); }
+
+.mem-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mem-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-dim); }
+.mem-field input, .mem-field select {
+  width: 100%;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  outline: none;
+}
+.mem-field input:focus, .mem-field select:focus { border-color: var(--uc); }
+.mem-label { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+.mem-textarea { min-height: 64px; }
+.mem-file { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 11px; }
+.mem-range { font-family: var(--mono); font-size: 11px; color: var(--cs); }
+.mem-range.bad { color: var(--err); }
+.mem-hint { font-size: 10.5px; line-height: 1.6; color: var(--text-faint); }
+.mem-err { font-size: 11px; color: var(--err); min-height: 14px; }
+.mem-regions-wrap { border-top: 1px dashed var(--border); padding-top: 8px; }
+.mem-regions {
+  margin-top: 4px;
+  max-height: 92px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.75;
+  color: var(--text-dim);
+}
+
+@media (max-width: 620px) {
+  .mem-row { grid-template-columns: 1fr; }
+}
+
 /* ---------------- 底部日志面板 ---------------- */
 .logbar {
   flex: 0 0 auto;
