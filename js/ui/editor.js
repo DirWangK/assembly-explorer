@@ -1,9 +1,8 @@
-/* editor.js — 轻量汇编编辑器：行号栏 + 语法高亮覆盖层 + 错误行标记 */
+/* editor.js — 轻量汇编编辑器：行号栏 + 语法高亮覆盖层 + 错误行标记
+ * 依赖：js/ui/dom.js（HTML 转义） */
 'use strict';
 
-function escHtml(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+const escHtml = AE.dom.escHtml;
 
 /* 找到该行最早的注释起点（与 arches.js stripComments 规则一致） */
 function findCommentIndex(line, arch) {

@@ -4,7 +4,7 @@
 const H = require('./helper.js');
 const { test, tests } = H.createSuite();
 const { assert, assertEq } = H;
-const { ARCHES, regList, stripComments, REGEX, ARCH_GROUP_BY_ID } = require('../js/arches.js');
+const { ARCHES, regList, stripComments, REGEX, ARCH_GROUP_BY_ID } = require('../js/core/arches.js');
 
 test('全部架构定义完整性（寄存器唯一、示例与字段齐全）', () => {
   for (const a of Object.values(ARCHES)) {

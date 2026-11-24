@@ -4,7 +4,7 @@
 const H = require('./helper.js');
 const { test, tests } = H.createSuite();
 const { assert, assertEq } = H;
-const I18N = require('../js/i18n.js');
+const I18N = require('../js/ui/i18n.js');
 
 test('zh/en 键完全一致', () => {
   const zh = Object.keys(I18N.dict.zh).sort();

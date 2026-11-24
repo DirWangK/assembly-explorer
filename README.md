@@ -9,7 +9,7 @@
 
 **在线体验**：https://37li7xnb4ptdll7m7qw.traesite.cn （Trae 部署，所有人可见）
 
-浏览器里的多架构汇编实验室（灵感来自 [Compiler Explorer](https://godbolt.org/)）：
+浏览器里的多架构汇编实验室（自研：聚焦汇编 ⇄ 机器码 ⇄ 模拟执行）：
 
 ```
 汇编源码 ⇄ 机器码（同一输入面板，双向实时同步）
@@ -72,23 +72,44 @@ CI：每次 push/PR 会自动运行语法检查与全量测试（GitHub Actions�
 目录结构：
 
 ```
-index.html            入口页
-css/style.css         双主题样式（design tokens）
-js/arches.js          架构定义表（寄存器/模式/示例/注释规则）
-js/preproc.js         伪指令预处理（位置计数器/数据段/符号/表达式）
-js/assembler.js       汇编流水线核心（多轮布局收敛、逐行诊断、输入防护）
-js/hexio.js           机器码文本解析（含 @code/@data 分区）与镜像→源码生成
-js/applog.js          底部日志面板（分级/过滤/折叠）
-js/session-payload.js 调试会话载荷构建
-js/emu-core.js        Unicorn 调试会话核心（步进/断点/暂停/分块恢复）
-js/unicorn-worker.js  模拟执行 Worker（会话协议）
-js/keystone-worker.js 汇编 Worker（看门狗保护）
-js/editor.js          代码编辑器（行号/高亮/错误标记）
-js/i18n.js            中英文案
-js/main.js            UI 编排
-test/                 测试套件（真实引擎 golden 值 + 调试行为）
-vendor/               三引擎 WASM 构建与来源说明（ATTRIBUTION.txt）
+index.html                入口页（按顺序加载脚本，无构建步骤）
+css/
+  tokens.css              设计令牌：深/浅主题色板、字体栈
+  base.css                基础：盒模型、页面骨架、滚动条、选区
+  layout.css              布局：顶栏、三栏网格、页脚、响应式
+  components.css          组件：按钮/徽标/编辑器/列表/输入视图/日志面板/toast
+js/
+  core/                   纯逻辑层（UMD，浏览器、Worker、Node 测试共用）
+    arches.js             架构定义表（寄存器/模式/示例/注释规则）
+    preproc.js            伪指令预处理（位置计数器/数据段/符号/表达式）
+    assembler.js          汇编流水线核心（多轮布局收敛、逐行诊断、输入防护）
+    hexio.js              机器码文本解析（@code/@data 分区）与镜像→源码生成
+    session-payload.js    调试会话载荷构建
+    emu-core.js           Unicorn 调试会话核心（步进/断点/暂停/分块恢复）
+  workers/                Web Worker（importScripts 加载 core）
+    keystone-worker.js    汇编 Worker（看门狗保护）
+    unicorn-worker.js     模拟执行 Worker（会话协议）
+  ui/                    DOM 编排层（命名空间 AE.*，单向依赖）
+    i18n.js               中英文案
+    dom.js                选择器/转义/格式化/防抖/toast
+    state.js              共享状态（应用配置、调试器）与构建标识
+    log.js                底部日志面板（分级/过滤/折叠）
+    engines.js            Capstone 缓存与 Keystone/Unicorn Worker 宿主
+    editor.js             代码编辑器（行号/高亮/错误标记）
+    output.js             第 2 栏渲染（hex dump / 反汇编 / 数据段）
+    debugger.js           第 3 栏：会话、寄存器、轨迹、断点、单步
+    input.js              第 1 栏：源码⇄机器码双页与流水线入口
+    prefs.js              主题/语言/架构/基址/分享链接
+    app.js                装配与启动
+test/                     测试套件（真实引擎 golden 值 + 调试行为）
+vendor/                   三引擎 WASM 构建与来源说明（ATTRIBUTION.txt）
 ```
+
+分层约定（零构建）：
+
+- `core/` 不触碰 DOM，可被 Node 测试直接 `require`，也可被 Worker `importScripts`；
+- `ui/` 只通过 `window.AE` 下的命名空间协作，加载顺序即依赖顺序（见 `index.html` 末尾）；
+- 状态只有一份（`AE.state` / `AE.dbg`），模块之间不复制状态，只传递引用。
 
 ## 许可
 

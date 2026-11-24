@@ -137,4 +137,6 @@
   }
 
   root.AppLog = AppLog;
+  /* 全局日志单例（各 UI 模块共用） */
+  if (root.AE) root.AE.log = new AppLog();
 })(typeof self !== 'undefined' ? self : this);

@@ -4,7 +4,7 @@
 const H = require('./helper.js');
 const { test, tests } = H.createSuite();
 const { assert, assertEq } = H;
-const P = require('../js/preproc.js');
+const P = require('../js/core/preproc.js');
 
 function parse(src, base) {
   return P.parseSource(src.split('\n'), { base: base || 0x10000 });

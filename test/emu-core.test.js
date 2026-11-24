@@ -4,10 +4,10 @@
 const H = require('./helper.js');
 const { test, tests } = H.createSuite();
 const { assert, assertEq } = H;
-const EmuCore = require('../js/emu-core.js');
-const Assembler = require('../js/assembler.js');
-const SessionPayload = require('../js/session-payload.js');
-const { ARCHES } = require('../js/arches.js');
+const EmuCore = require('../js/core/emu-core.js');
+const Assembler = require('../js/core/assembler.js');
+const SessionPayload = require('../js/core/session-payload.js');
+const { ARCHES } = require('../js/core/arches.js');
 
 const MKeystone = require('@alexaltea/keystone-js');
 const MCapstone = require('@alexaltea/capstone-js');

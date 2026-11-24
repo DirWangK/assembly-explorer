@@ -6,7 +6,10 @@
 <title>Assembly Explorer · 汇编实验室 — Keystone ⇄ Capstone ⇄ Unicorn</title>
 <meta name="description" content="浏览器里的多架构汇编实验室：Keystone 汇编、Capstone 反汇编、Unicorn 单步调试与模拟执行，全部通过 WebAssembly 运行。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='6' fill='%2313161c'/%3E%3Crect x='7' y='7' width='8' height='8' rx='1.5' fill='%23e5b567'/%3E%3Crect x='17' y='7' width='8' height='8' rx='1.5' fill='%236fc3df'/%3E%3Crect x='12' y='17' width='8' height='8' rx='1.5' fill='%23b294bb'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
 </head>
 <body>
 
@@ -182,12 +185,19 @@
 <div id="toast"></div>
 
 <script src="vendor/capstone.js"></script>
-<script src="js/i18n.js"></script>
-<script src="js/arches.js"></script>
-<script src="js/hexio.js"></script>
-<script src="js/applog.js"></script>
-<script src="js/session-payload.js"></script>
-<script src="js/editor.js"></script>
-<script src="js/main.js"></script>
+<script src="js/ui/i18n.js"></script>
+<script src="js/core/arches.js"></script>
+<script src="js/core/hexio.js"></script>
+<script src="js/core/session-payload.js"></script>
+<script src="js/ui/dom.js"></script>
+<script src="js/ui/state.js"></script>
+<script src="js/ui/log.js"></script>
+<script src="js/ui/engines.js"></script>
+<script src="js/ui/output.js"></script>
+<script src="js/ui/editor.js"></script>
+<script src="js/ui/debugger.js"></script>
+<script src="js/ui/input.js"></script>
+<script src="js/ui/prefs.js"></script>
+<script src="js/ui/app.js"></script>
 </body>
 </html>

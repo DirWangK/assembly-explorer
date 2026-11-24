@@ -9,7 +9,7 @@
 
 **Live demo**: https://37li7xnb4ptdll7m7qw.traesite.cn (deployed on Trae, publicly accessible)
 
-A multi-architecture assembly playground in your browser (inspired by [Compiler Explorer](https://godbolt.org/)):
+A multi-architecture assembly playground in your browser (built from scratch: assembly ⇄ machine code ⇄ execution):
 
 ```
 Assembly ⇄ Machine code (one input pane, mirrors both ways)
@@ -71,23 +71,44 @@ CI: every push/PR runs the syntax check and the full test suite (GitHub Actions,
 ## Project layout
 
 ```
-index.html            entry page
-css/style.css         dual-theme styles (design tokens)
-js/arches.js          architecture table (registers/modes/examples/comment rules)
-js/preproc.js         directive preprocessor (location counter/data segments/symbols/expressions)
-js/assembler.js       assembly pipeline core (multi-pass layout convergence, line diagnostics, input hardening)
-js/hexio.js           machine-code text parser (@code/@data regions) + image→source generation
-js/applog.js          bottom log panel (levels/filter/collapse)
-js/session-payload.js debug-session payload builder
-js/emu-core.js        Unicorn debug-session core (stepping/breakpoints/pause/chunked resume)
-js/unicorn-worker.js  emulation Worker (session protocol)
-js/keystone-worker.js assembly Worker (watchdog protected)
-js/editor.js          code editor (line numbers/highlighting/error marks)
-js/i18n.js            UI strings (zh/en)
-js/main.js            UI orchestration
-test/                 test suite (real-engine golden values + debugger behavior)
-vendor/               bundled WASM engine builds & provenance (ATTRIBUTION.txt)
+index.html                entry page (ordered classic scripts, no build step)
+css/
+  tokens.css              design tokens: dark/light palettes, font stacks
+  base.css                base: box model, page skeleton, scrollbars, selection
+  layout.css              layout: topbar, three-column grid, footer, responsive
+  components.css          components: buttons/badges/editor/lists/input views/log/toast
+js/
+  core/                   pure logic (UMD: browser, Worker and Node tests)
+    arches.js             architecture table (registers/modes/examples/comment rules)
+    preproc.js            directive preprocessor (location counter/data/symbols/expressions)
+    assembler.js          assembly pipeline (multi-pass layout, line diagnostics, input hardening)
+    hexio.js              machine-code text parser (@code/@data) + image→source generation
+    session-payload.js    debug-session payload builder
+    emu-core.js           Unicorn debug-session core (step/breakpoints/pause/chunked resume)
+  workers/                Web Workers (importScripts core)
+    keystone-worker.js    assembly Worker (watchdog protected)
+    unicorn-worker.js     emulation Worker (session protocol)
+  ui/                     DOM orchestration (namespaced AE.*, one-way deps)
+    i18n.js               UI strings (zh/en)
+    dom.js                selectors/escaping/formatting/debounce/toast
+    state.js              shared state (app config, debugger) + build id
+    log.js                bottom log panel (levels/filter/collapse)
+    engines.js            Capstone cache + Keystone/Unicorn Worker hosts
+    editor.js             code editor (line numbers/highlighting/error marks)
+    output.js             pane 2 rendering (hex dump / disassembly / data)
+    debugger.js           pane 3: session, registers, trace, breakpoints, stepping
+    input.js              pane 1: source ⇄ machine-code tabs, pipeline entry
+    prefs.js              theme/language/arch/base/share link
+    app.js                wiring & boot
+test/                     test suite (real-engine golden values + debugger behavior)
+vendor/                   bundled WASM engine builds & provenance (ATTRIBUTION.txt)
 ```
+
+Layering rules (zero build):
+
+- `core/` never touches the DOM: it is `require`-able from Node tests and `importScripts`-able from Workers;
+- `ui/` modules collaborate only through the `window.AE` namespaces; script order is the dependency order (see the end of `index.html`);
+- there is exactly one copy of state (`AE.state` / `AE.dbg`) — modules pass references, never clones.
 
 ## License
 

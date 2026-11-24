@@ -1,0 +1,90 @@
+/* tokens.css — 设计令牌：深/浅主题色板与字体栈 */
+
+/* ---------------- 主题令牌 ---------------- */
+html[data-theme='dark'] {
+  --bg: #13161c;
+  --bg-pane: #1a1e26;
+  --bg-inset: #10131a;
+  --bg-hover: #20242e;
+  --bg-active: #262c38;
+  --border: #262b36;
+  --border-soft: #1f242e;
+  --text: #ccd2dc;
+  --text-dim: #8a919e;
+  --text-faint: #5c6470;
+  --ks: #e5b567;
+  --ks-bg: #2b2417;
+  --cs: #6fc3df;
+  --cs-bg: #14232b;
+  --uc: #b294bb;
+  --uc-bg: #241d2a;
+  --ok: #8fc973;
+  --ok-bg: #1a2617;
+  --err: #e5735f;
+  --err-bg: #2b1a17;
+  --warn: #d9b96f;
+  --warn-bg: #2b2417;
+  --mnem: #82b8ff;
+  --reg: #e5b567;
+  --num: #b5c98e;
+  --lbl: #f28f6f;
+  --dir: #c678dd;
+  --cmt: #5f6774;
+  --str: #a3d977;
+  --sel: rgba(130, 184, 255, .25);
+  --shadow: 0 1px 3px rgba(0, 0, 0, .4);
+  --btn-hover: #20242e;
+  --console-text: #b5e0a5;
+  --chg-bg: rgba(143, 201, 115, .09);
+  --bp: #e5735f;
+  --pc: #8fc973;
+  --tag-ks-fg: #1a1611;
+  --tag-cs-fg: #0e1c22;
+  --tag-uc-fg: #1c1420;
+}
+html[data-theme='light'] {
+  --bg: #f2f4f7;
+  --bg-pane: #ffffff;
+  --bg-inset: #eef1f5;
+  --bg-hover: #e9edf2;
+  --bg-active: #dfe5ec;
+  --border: #d5dbe3;
+  --border-soft: #e3e8ee;
+  --text: #2a313c;
+  --text-dim: #5d6878;
+  --text-faint: #8b95a5;
+  --ks: #b7791f;
+  --ks-bg: #f7ecd8;
+  --cs: #1d7ba1;
+  --cs-bg: #dff0f8;
+  --uc: #8a5aa0;
+  --uc-bg: #f1e8f6;
+  --ok: #3d8b37;
+  --ok-bg: #e2f2de;
+  --err: #c74a35;
+  --err-bg: #fbe6e2;
+  --warn: #a97f1f;
+  --warn-bg: #f9f0d5;
+  --mnem: #2f6fbe;
+  --reg: #a3660a;
+  --num: #55801f;
+  --lbl: #d15f2f;
+  --dir: #9553c4;
+  --cmt: #98a2ae;
+  --str: #4f9e2f;
+  --sel: rgba(47, 111, 190, .18);
+  --shadow: 0 1px 3px rgba(30, 40, 60, .08);
+  --btn-hover: #e9edf2;
+  --console-text: #3d8b37;
+  --chg-bg: rgba(61, 139, 55, .12);
+  --bp: #c74a35;
+  --pc: #3d8b37;
+  --tag-ks-fg: #fff8ec;
+  --tag-cs-fg: #eaf6fc;
+  --tag-uc-fg: #f7edfb;
+}
+
+:root {
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
+}

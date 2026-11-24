@@ -4,8 +4,8 @@
 const H = require('./helper.js');
 const { test, tests } = H.createSuite();
 const { assert, assertEq } = H;
-const Assembler = require('../js/assembler.js');
-const { ARCHES } = require('../js/arches.js');
+const Assembler = require('../js/core/assembler.js');
+const { ARCHES } = require('../js/core/arches.js');
 
 function hex(u8) { return Buffer.from(u8).toString('hex'); }
 

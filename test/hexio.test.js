@@ -4,9 +4,9 @@
 const H = require('./helper.js');
 const { test, tests } = H.createSuite();
 const { assert, assertEq } = H;
-const HexIO = require('../js/hexio.js');
-const Assembler = require('../js/assembler.js');
-const { ARCHES } = require('../js/arches.js');
+const HexIO = require('../js/core/hexio.js');
+const Assembler = require('../js/core/assembler.js');
+const { ARCHES } = require('../js/core/arches.js');
 
 function hex(u8) { return Buffer.from(u8).toString('hex'); }
 

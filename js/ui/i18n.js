@@ -120,7 +120,7 @@
       'row.write': '写',
       'row.read': '读',
       'foot.pipeline': '三引擎流水线：Keystone 把汇编编码为机器码 → Capstone 解码回汇编验证回环 → Unicorn 在模拟 CPU 中单步调试与执行。',
-      'foot.tech': '纯前端 · WebAssembly（Emscripten 构建）· 致敬 Compiler Explorer · 引擎：@alexaltea/keystone-js、capstone-js、unicorn-js',
+      'foot.tech': '纯前端 · WebAssembly（Emscripten 构建）· 引擎：@alexaltea/keystone-js、capstone-js、unicorn-js',
       'engines.uc': 'Unicorn·{arch}',
     },
     en: {
@@ -233,7 +233,7 @@
       'row.write': 'W',
       'row.read': 'R',
       'foot.pipeline': 'Three-engine pipeline: Keystone encodes assembly into machine code → Capstone round-trips it back to text → Unicorn single-steps and executes it on an emulated CPU.',
-      'foot.tech': 'Pure frontend · WebAssembly (Emscripten builds) · Inspired by Compiler Explorer · Engines: @alexaltea/keystone-js, capstone-js, unicorn-js',
+      'foot.tech': 'Pure frontend · WebAssembly (Emscripten builds) · Engines: @alexaltea/keystone-js, capstone-js, unicorn-js',
       'engines.uc': 'Unicorn·{arch}',
     },
   };

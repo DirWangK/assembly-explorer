@@ -34,7 +34,7 @@ self.onmessage = async (ev) => {
   const msg = ev.data;
   try {
     if (msg.type === 'load') {
-      importScripts('../js/emu-core.js' + VERSION_Q, '../vendor/unicorn_' + msg.ucFile + '.js');
+      importScripts('../core/emu-core.js' + VERSION_Q, '../../vendor/unicorn_' + msg.ucFile + '.js');
       const factory = self.MUnicorn;
       uc = await factory();
       self.postMessage({ type: 'ready' });

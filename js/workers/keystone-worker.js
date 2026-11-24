@@ -30,11 +30,11 @@ self.onmessage = async (ev) => {
   try {
     if (m.type === 'init') {
       /* 依赖顺序：arches/preproc 需在 assembler 之前（UMD 工厂取 self.Preproc/self.ArchesModule） */
-      importScripts('../js/arches.js' + VERSION_Q, '../js/preproc.js' + VERSION_Q,
-        '../js/assembler.js' + VERSION_Q, '../vendor/keystone.js');
+      importScripts('../core/arches.js' + VERSION_Q, '../core/preproc.js' + VERSION_Q,
+        '../core/assembler.js' + VERSION_Q, '../../vendor/keystone.js');
       /* Worker 内脚本目录推导会指向 /js/，显式把 wasm 定位到 /vendor/ */
       KS = await self.MKeystone({
-        locateFile: (f) => new URL('../vendor/' + f, self.location.href).href,
+        locateFile: (f) => new URL('../../vendor/' + f, self.location.href).href,
       });
       self.postMessage({ type: 'ready' });
       return;
